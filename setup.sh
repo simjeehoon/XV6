@@ -3,11 +3,12 @@
 # ==========================================================
 GIT_REPO_URL="https://github.com/mit-pdos/xv6-public" 
 CLONE_DIR_NAME="xv6-public" 
-DATA_DIR="data" # 사전에 준비된 파일들이 있는 디렉토리 이름
+DATA_DIR_NAME="data"
 # ==========================================================
 
-# 클론된 디렉토리의 실제 경로
-TARGET_DIR="./$CLONE_DIR_NAME"
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+DATA_DIR="$SCRIPT_DIR/$DATA_DIR_NAME"
+TARGET_DIR="$SCRIPT_DIR/$CLONE_DIR_NAME"
 
 # data 디렉토리의 존재 여부 확인
 if [ ! -d "$DATA_DIR" ]; then
