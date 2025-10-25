@@ -9,8 +9,8 @@ XV6의 스케줄링, 파일시스템 개선하기
 
 
 # 목표
-  1. **XV6**의 **스케줄링 알고리즘**을 개선합니다.
-  2. **XV6**에 **파일 시스템**을 추가합니다.
+  1. **XV6**의 **스케줄링 알고리즘**을 개선합니다. ([바로가기](https://github.com/simjeehoon/XV6/tree/master?tab=readme-ov-file#3-xv6%EC%9D%98-%EB%8D%94-%ED%9A%A8%EC%9C%A8%EC%A0%81%EC%9D%B8-%EC%8A%A4%EC%BC%80%EC%A4%84%EB%A7%81-%EC%95%8C%EA%B3%A0%EB%A6%AC%EC%A6%98%EC%9D%84-%EC%A0%81%EC%9A%A9))
+  2. **XV6**에 **파일 시스템**을 추가합니다. ([바로가기](https://github.com/simjeehoon/XV6/tree/master?tab=readme-ov-file#5-xv6%EC%9D%98-%EB%8D%94-%ED%9A%A8%EC%9C%A8%EC%A0%81%EC%9D%B8-%ED%8C%8C%EC%9D%BC-%EC%8B%9C%EC%8A%A4%ED%85%9C%EC%9D%84-%EC%A0%81%EC%9A%A9))
 
 
 # 설치
@@ -446,15 +446,15 @@ wakeup1(void *chan)
  - `schduler` 관련 함수는 `scheduler`와 `sched`가 있습니다.
  
  1. `scheduler()`
-  - 각 CPU가 자신의 설정을 마친 이후에 호출하는 함수입니다.
-  - 다음에 수행될 프로세스를 계속해서 선택하며, 반환되지 않습니다.
-  - 프로세스가 선택되면, `proc` 구조체에 담겨 있는 페이지 테이블 정보, 컨텍스트 정보를 가져와서 커널과 교환합니다. 이후 CPU의 제어권은 선택된 프로세스에게 넘어갑니다. 
-  - 선택된 프로세스를 수행하다가 적절한 인터럽트가 발생하면 다시 컨텍스트 스위칭이 일어나고, `scheduler()`로 제어권이 넘어옵니다.
-  - 이후 커널은 다시 프로세스를 선택하고 동일한 과정을 반복한다.
+    - 각 CPU가 자신의 설정을 마친 이후에 호출하는 함수입니다.
+    - 다음에 수행될 프로세스를 계속해서 선택하며, 반환되지 않습니다.
+    - 프로세스가 선택되면, `proc` 구조체에 담겨 있는 페이지 테이블 정보, 컨텍스트 정보를 가져와서 커널과 교환합니다. 이후 CPU의 제어권은 선택된 프로세스에게 넘어갑니다. 
+    - 선택된 프로세스를 수행하다가 적절한 인터럽트가 발생하면 다시 컨텍스트 스위칭이 일어나고, `scheduler()`로 제어권이 넘어옵니다.
+    - 이후 커널은 다시 프로세스를 선택하고 동일한 과정을 반복한다.
  
  2. `sched()`
-  - `sched()`는 다시 `scheduler`로 진입하는 역할을 합니다.
-  - `scheduler`에서 제어권을 선택된 프로세스에게 넘긴 뒤, 나중에 다시 `scheduler`로 돌아올 때 호출됩니다.
+    - `sched()`는 다시 `scheduler`로 진입하는 역할을 합니다.
+    - `scheduler`에서 제어권을 선택된 프로세스에게 넘긴 뒤, 나중에 다시 `scheduler`로 돌아올 때 호출됩니다.
 
 ---
 
@@ -876,6 +876,11 @@ if(selected != (void*)0){ // [os-prj3] If process is selected
 > - `sdebug` 명령 수행 후에도 `priority`가 오버플로없이 잘 출력됩니다.
 
 ---
+# 4. 메모리 개선
+ 페이지 교체 알고리즘을 시뮬레이션하여 각 알고리즘의 성능을 비교하기 위해 별도로 프로젝트를 진행하였습니다.
+ > 링크: [페이지 시뮬레이터](https://github.com/simjeehoon/page-simulator)
+
+---
 # 5. **XV6**의 더 효율적인 **파일 시스템**을 적용
  - XV6의 기존 파일 시스템에 새로운 파일 시스템을 추가합니다.
  - `./setup.sh 5`을 입력하시고 진행해주세요.
@@ -1089,9 +1094,17 @@ writei(struct inode *ip, char *src, uint off, uint n)
 	}
   }
 ```
- `fs.c`의 `writei`이다. 기존 파일 시스템에서는 `bmap`을 이용하여 파일의 `offset`에 따라 디스크 블록을 할당한다. `bmap`은 필요시 디스크 블록을 할당하고, 할당된 블록 주소를 반환하는 함수이다. 이 블록 주소를 `bread`에 넘겨 디스크 블록 정보가 담긴 `struct buf`를 얻어온다. 이곳에 `src`의 내용을 기록하고 `log_write`와 `brelse`를 호출하여 쓰기 작업을 마친다.
+ > - `fs.c`의 `writei`입니다. 
+ > - 기존 파일 시스템에서는 `bmap`을 이용하여 파일의 `offset`에 따라 디스크 블록을 할당합니다. 
+ > - `bmap`은 필요시 디스크 블록을 할당하고, 할당된 블록 주소를 반환하는 함수입니다. 
+ > - 이 블록 주소를 `bread`에 넘겨 디스크 블록 정보가 담긴 `struct buf`를 얻어옵니다. 
+ > - 이곳에 `src`의 내용을 기록하고 `log_write`와 `brelse`를 호출하여 쓰기 작업을 마칩니다.
 
- **CS 파일 시스템**을 구현하기 위해서 `inode`의 `type`이 `T_CS`인 경우와 아닌 경우로 흐름을 나누었다. `T_CS`일 때는 **CS 파일 시스템**을 위한 블록 매핑 함수인 `bcsmap` 함수를 호출한다. `bcsmap`은 필요시 디스크 블록을 추가로 할당한다. 그리하여 데이터가 쓰일 단일 블록 주소를 반환한다. 이 주소는 다시 `bread`의 인자로 넘겨진다. 이후 과정은 기존 파일 시스템과 동일하다.
+ > - **CS 파일 시스템**을 구현하기 위해서 `inode`의 `type`이 `T_CS`인 경우와 아닌 경우로 흐름을 나누었습니다. 
+ > - `T_CS`일 때는?
+ >    -  **CS 파일 시스템**을 위한 블록 매핑 함수인 `bcsmap` 함수를 호출합니다. 
+ >    - `bcsmap`은 필요시 디스크 블록을 추가로 할당합니다. 그리하여 데이터가 쓰일 단일 블록 주소를 반환합니다. 
+ >    - 이 주소는 다시 `bread`의 인자로 넘깁니다. 이후 과정은 기존 파일 시스템과 동일합니다.
 
 ### fs.c
 ```c
@@ -1127,10 +1140,12 @@ bmap(struct inode *ip, uint bn)
 }
 ```
 
- 기존 파일 시스템이 사용하는 `bmap`은 구조가 단순하다. `inode`의 `addrs`에 블록 포인터가 없다면 `balloc`을 이용해 새로 할당하고, 그것을 반환한다. 이미 존재하면 존재하는 블록의 포인터를 반환한다.
- 만일 파일 크기가 커질 경우 `INDIRECT` 포인터를 위한 디스크 블록을 할당하고, 그 블록 내부에 블록 포인터를 저장하고 반환한다.
-
- 블록 할당에 이용하는 함수는 `balloc`이다. 이 함수는 디스크에 유효한 블록 1개를 찾아서 반환한다.
+> - 기존 파일 시스템이 사용하는 `bmap`은 구조가 단순합니다. 
+> - `inode`의 `addrs`에 블록 포인터가 없다면 `balloc`을 이용해 새로 할당하고, 그것을 반환합니다.
+> - 이미 존재하면 존재하는 블록의 포인터를 반환합니다.
+> - 만일 파일 크기가 커질 경우 `INDIRECT` 포인터를 위한 디스크 블록을 할당하고, 그 블록 내부에 블록 포인터를 저장하고 반환합니다.
+>
+> - 블록 할당에 이용하는 함수는 `balloc`입니다. 이 함수는 디스크에 유효한 블록 1개를 찾아서 반환합니다.
 
 ### fs.c
 ```c
@@ -1193,30 +1208,32 @@ bcsmap(struct inode *ip, uint off, uint n)
 }
 ```
 
- * **CS 파일 시스템**에서 사용하는 `bcsmap`의 흐름은 `bmap`과 다르다. `inode` 구조체 내 `addrs`의 각 원소를 해석하는 방법이 다르고, 블록을 할당하는 방식이 다르기 때문이다.
+ > - **CS 파일 시스템**에서 사용하는 `bcsmap`의 흐름은 `bmap`과 다르게 동작합니다.
+ > - `inode` 구조체 내 `addrs`의 각 원소를 해석하는 방법이 다르고, 블록을 할당하는 방식이 다르기 때문입니다.
 
- * **CS 파일 시스템**에서 `addrs`의 각 원소를 해석할 때, **상위 3바이트**는 블록의 주소, **하위 1바이트**는 연속된 블록의 개수를 의미한다. 
+ > - * **CS 파일 시스템**에서 `addrs`의 각 원소를 해석할 때, **상위 3바이트**는 블록의 주소, **하위 1바이트**는 연속된 블록의 개수를 의미합니다. 
 
-    * 이를 이용하여, 인자로 넘겨받은 `offset`이 몇 번째 블록에 해당하는지 `addrs[0]`부터 순차적으로 탐색한다. 만일 `offset`이 위치한 단일 블록이 이미 존재하면, 해당 블록의 주소를 반환한다.</br>
+ >>  - 이를 이용하여, 인자로 넘겨받은 `offset`이 몇 번째 블록에 해당하는지 `addrs[0]`부터 순차적으로 탐색합니다.
+ >>  - 만일 `offset`이 위치한 단일 블록이 이미 존재하면, 해당 블록의 주소를 반환합니다.
 
- * 블록이 존재하지 않는 경우, 처리하는 방법은 2가지이다. 마지막 `addrs`의 원소가 가리키는 블록의 길이를 확장하거나, 아예 새로운 블록을 할당하는 것이다. 
-
-    * 전자의 방법을 통하여 확장에 실패하는 경우는 연속 할당에 실패하거나, 블록 길이가 255를 초과하는 경우이다. 
-
-    * 할당에 이용하는 함수는 `bcsalloc`이다. 이 함수에 이전 블록 주소와 필요한 공간의 길이를 인자로 넘겨, 새로 할당한 공간의 시작 주소와 새로 할당한 영역의 길이를 반환한다. 
-
-    * 필요한 공간의 길이는 `bcsmap`의 3번째 인자 n을 이용하여 구한다. n은 실제로 필요한 데이터 용량이다. 
-
-    * 이전 블록 주소와 연속적인 블록을 할당할 수 없다면 `bcsalloc`은 `–1`를 반환한다.
-
- * 연속 할당에 실패하여 `addrs`에 새로운 값을 할당하는 경우엔 이전 블록 주소를 `–1`로 설정하여 넘긴다.
-
-    * 그러면 `bcsalloc`은 이전 블록과의 연속성을 고려하지 않는다.
-
- * 두 방법 모두 실패했다면 `panic`을 호출한다.
+ > 블록이 존재하지 않는 경우, 처리하는 방법은 2가지입니다. 마지막 `addrs`의 원소가 가리키는 블록의 길이를 확장하거나, 아예 새로운 블록을 할당하는 것입니다.
+ >
+ >>   * 전자의 방법을 통하여 확장에 실패하는 경우는 연속 할당에 실패하거나, 블록 길이가 255를 초과하는 경우입니다.
+ >>
+ >>   * 할당에 이용하는 함수는 `bcsalloc`입니다. 이 함수에 이전 블록 주소와 필요한 공간의 길이를 인자로 넘겨, 새로 할당한 공간의 시작 주소와 새로 할당한 영역의 길이를 반환합니다. 
+ >>
+ >>   * 필요한 공간의 길이는 `bcsmap`의 3번째 인자 n을 이용하여 구합니다. n은 실제로 필요한 데이터 용량입니다. 
+ >>
+ >>   * 이전 블록 주소와 연속적인 블록을 할당할 수 없다면 `bcsalloc`은 `–1`를 반환합니다.
+ >
+ > * 연속 할당에 실패하여 `addrs`에 새로운 값을 할당하는 경우엔 이전 블록 주소를 `–1`로 설정하여 넘깁니다.
+ >
+ >   * 그러면 `bcsalloc`은 이전 블록과의 연속성을 고려하지 않습니다.
+ >
+ > * 두 방법 모두 실패했다면 `panic`을 호출합니다.
 
  
- 블록 할당을 비교하기 위해 `balloc`과 `bcsalloc`을 분석하였다.
+ 블록 할당을 비교하기 위해 `balloc`과 `bcsalloc`을 분석하였습니다.
 
 ### fs.c
 ```c
@@ -1246,8 +1263,8 @@ balloc(uint dev)
 }
 ```
 
- * `balloc`에서는 가장 먼저 블록의 할당 정보 비트를 읽는다. 이 데이터를 이용하여 할당할 수 있는 블록을 순차적으로 찾는다. 
- * 할당 가능한 블록을 발견하였다면 해당 블록을 0으로 초기화하고, 블록 주소를 반환한다.
+ * `balloc`에서는 가장 먼저 블록의 할당 정보 비트를 읽습니다. 이 데이터를 이용하여 할당할 수 있는 블록을 순차적으로 찾습니다. 
+ * 할당 가능한 블록을 발견하였다면 해당 블록을 0으로 초기화하고, 블록 주소를 반환합니다.
 
 ### fs.c
 ```c
@@ -1357,20 +1374,28 @@ bcsalloc(uint dev, int prevbnum, uint needlen, uint *alloclen)
 
 ```
 
- * `bcsalloc`의 블록 탐색 방식은 `balloc`과 동일하지만, 연속된 블록을 반환하여야 하므로 `balloc`보다 코드가 길다. 
+ - `bcsalloc`의 블록 탐색 방식은 `balloc`과 동일하지만, 연속된 블록을 반환하여야 하므로 `balloc`보다 코드가 길어집니다.
 
- * 이전 블록 주소인 `prevbnum`이 `–1`이 아닌 값으로 설정되었다면, `prevbnum`의 다음 블록 주소로부터 b와 bi 값을 얻어낸다. 이 주소로부터 `needlen`만큼의 연속으로 할당 가능한 블록을 탐색한다. 만일 `prevbnum` 다음 블록이 할당 불가능하다면 `–1`을 반환한다. `needlen`만큼 연속된 블록들을 찾았거나, 탐색 과정중 할당 불가능한 블록을 마주하게 되었다면, 연속적으로 할당한 블록의 길이와 새로 할당한 블록 중 가장 처음 블록의 주소를 반환한다. 
+ * 이전 블록 주소인 `prevbnum`이 `–1`이 아닌 값으로 설정되었다면, `prevbnum`의 다음 블록 주소로부터 b와 bi 값을 얻어냅니다. 이 주소로부터 `needlen`만큼의 연속으로 할당 가능한 블록을 탐색합니다. 
+ * 만일 `prevbnum` 다음 블록이 할당 불가능하다면 `–1`을 반환합니다. 
+ * `needlen`만큼 연속된 블록들을 찾았거나, 탐색 과정중 할당 불가능한 블록을 마주하게 되었다면, 연속적으로 할당한 블록의 길이와 새로 할당한 블록 중 가장 처음 블록의 주소를 반환합니다. 
 
- * `prevbnum`이 `–1`로 설정된 경우에는 더 간단하다. 가장 먼저 할당 가능한 블록을 찾고, 시작 블록으로 설정한다. 이후에 그 시작 블록으로부터 `needlen`만큼 연속으로 할당 가능한 블록들을 탐색한다. `needlen`만큼 연속된 블록들을 찾았거나, 탐색 과정중 할당 불가능한 블록을 마주하게 되었다면, 연속적으로 할당한 블록의 길이와 새로 할당한 블록 중 가장 처음 블록의 주소를 반환한다. 
+ - `prevbnum`이 `–1`로 설정된 경우에는 더 간단합니다. 가장 먼저 할당 가능한 블록을 찾고, 시작 블록으로 설정합니다. 
+ - 이후에 그 시작 블록으로부터 `needlen`만큼 연속으로 할당 가능한 블록들을 탐색합니다. 
+ - `needlen`만큼 연속된 블록들을 찾았거나, 탐색 과정중 할당 불가능한 블록을 마주하게 되었다면, 연속적으로 할당한 블록의 길이와 새로 할당한 블록 중 가장 처음 블록의 주소를 반환합니다. 
 
- * 블록의 할당 정보 비트가 담긴 블록이 수정되었다면 `log_write`와 `brelse`를 순차적으로 호출한다. 만일 수정되지 않았다면 `brelse`만 호출한다.
+ * 블록의 할당 정보 비트가 담긴 블록이 수정되었다면 `log_write`와 `brelse`를 순차적으로 호출합니다. 
+ * 만일 수정되지 않았다면 `brelse`만 호출합니다.
 
 ---
 
 ## (3) 파일 읽기 과정
 ![read_file](https://github.com/simjeehoon/src_repository/blob/master/xv6-public/os-prj5/image04.png?raw=true)
 
- 시스템콜 `read`를 이용하여 파일의 내용을 읽을 때의 과정을 표로 나타냈다. 쓰기와 마찬가지로 `sys_read`, `fileread`까지는 코드를 수정하지 않았다. `readi`부터는 코드 내용을 일부 수정했다. 파일이 **CS 파일 시스템**에 해당할 경우 다른 처리를 한다. **CS 파일 시스템**에서 호출하는 디스크 블록 매핑 함수는 `bcsmap`, 일반 파일 시스템에서의 함수는 `bmap`이다.
+ * 시스템콜 `read`를 이용하여 파일의 내용을 읽을 때의 과정을 표로 나타냈습니다. 
+ * 쓰기와 마찬가지로 `sys_read`, `fileread`까지는 코드를 수정하지 않았습니다. 
+ * `readi`부터는 코드 내용을 일부 수정했습니다. 
+ * 파일이 **CS 파일 시스템**에 해당할 경우 다른 처리를 합니다. **CS 파일 시스템**에서 호출하는 디스크 블록 매핑 함수는 `bcsmap`, 일반 파일 시스템에서의 함수는 `bmap`입니다.
 
 ### sysfile.c
 ```c
@@ -1409,7 +1434,7 @@ fileread(struct file *f, char *addr, int n)
 }
 ```
 
-`sysfile.c`의 `sys_read`와 `file.c`의 `fileread` 코드이다. `fileread`에서 `readi`를 호출한다.
+> `sysfile.c`의 `sys_read`와 `file.c`의 `fileread` 코드입니다. `fileread`에서 `readi`를 호출합니다.
 
 ### fs.c
 ```c
@@ -1451,23 +1476,25 @@ readi(struct inode *ip, char *dst, uint off, uint n)
 }
 ```
 
- 수정한 `fs.c`의 `readi` 코드이다. `inode`의 `type`이 `T_CS`일 때의 처리가 **CS 파일시스템** 처리이다. `writei`와 반대로 디스크의 내용을 `dst`로 복사한다. 따라서 블록 매핑 함수를 그대로 이용하면 된다.
+> * 수정한 `fs.c`의 `readi` 코드입니다. `inode`의 `type`이 `T_CS`일 때의 처리가 **CS 파일시스템** 처리입니다. 
+> * `writei`와 반대로 디스크의 내용을 `dst`로 복사합니다. 따라서 블록 매핑 함수를 그대로 이용하면 됩니다.
 
- `bcsmap`의 경우 `off`에 해당하는 블록이 이미 있을 경우 해당 블록의 주소를 반환한다. 따라서 `readi`가 이상 없이 작동한다.
+> * `bcsmap`의 경우 `off`에 해당하는 블록이 이미 있을 경우 해당 블록의 주소를 반환합니다. 
+> * 따라서 `readi`가 이상 없이 작동합니다.
 
 ---
 ## (4) 파일 제거 과정
-![delete_file](https://github.com/simjeehoon/src_repository/blob/master/xv6-public/os-prj5/image03.png?raw=true)
+ ![delete_file](https://github.com/simjeehoon/src_repository/blob/master/xv6-public/os-prj5/image03.png?raw=true)
 
- 시스템콜 `unlink`를 이용하여 파일을 제거하는 과정을 표로 나타냈다. `iput`에서 `inode`의 `ref`가 1일 경우 `itrunc`를 호출하여 파일을 삭제한다. 따라서 `itrunc`에서 **CS 파일 시스템**을 위한 제거 과정을 추가하면, **CS 파일**을 삭제할 수 있게 된다.
+ * 시스템콜 `unlink`를 이용하여 파일을 제거하는 과정을 표로 나타냈습니다. 
+ * `iput`에서 `inode`의 `ref`가 1일 경우 `itrunc`를 호출하여 파일을 삭제합니다. 
+ * 따라서 `itrunc`에서 **CS 파일 시스템**을 위한 제거 과정을 추가하면, **CS 파일**을 삭제할 수 있게 됩니다.
 
- <center>
-        <img src="https://github.com/simjeehoon/src_repository/blob/master/xv6-public/os-prj5/image05.png?raw=true" title="image05.png" alt="image05.png"></img><br/>
-</center>
+ ![code_delete](https://github.com/simjeehoon/src_repository/blob/master/xv6-public/os-prj5/image05.png?raw=true)
 
- 위의 사진은 삭제 과정의 코드들을 나타낸 것이다.
+ 위의 사진은 삭제 과정의 코드들을 나타낸 것입니다.
 
-### fs.c
+### `fs.c`
 ```c
  static void
 itrunc(struct inode *ip)
@@ -1514,12 +1541,13 @@ itrunc(struct inode *ip)
   }
 }
 ```
- 위 코드처럼 `itrunc`에서 `inode`의 `type`이 `T_CS`일 경우 **CS 파일 시스템**에 맞게 삭제한다. 각 `inode`의 `addr`로부터 블록의 시작 주소와 연속된 블록 개수를 추출하고, 연속된 블록에 대해 `bfree`를 호출한다.
+ > - `itrunc`에서 `inode`의 `type`이 `T_CS`일 경우 **CS 파일 시스템**에 맞게 삭제합니다.
+ > - 각 `inode`의 `addr`로부터 블록의 시작 주소와 연속된 블록 개수를 추출하고, 연속된 블록에 대해 `bfree`를 호출합니다.
 
 ---
 
-## (5) printinfo 구현
- 파일 정보를 출력하는 printinfo를 시스템콜로 구현하였다.
+## (5) `printinfo` 구현
+ 파일 정보를 출력하는 `printinfo`를 시스템콜로 구현하였습니다.
 ```c
 //[os-prj5] printinfo
 int
@@ -1559,25 +1587,28 @@ sys_printinfo(void)
 }
 ```
 
- 위와 같이 `printinfo`를 호출하면 
- * 파일 이름
- * inode 번호
- * 파일 타입
- * 파일 크기
- * DIRECT BLOCK 정보
+> 위와 같이 `printinfo`를 호출하면 
+> * 파일 이름
+> * inode 번호
+> * 파일 타입
+> * 파일 크기
+> * DIRECT BLOCK 정보
+> 
+> 가 출력됩니다.
  
- 가 출력된다.
- 
-  기존 파일 시스템의 경우 `DIRECT BLOCK`의 정보로써 사용하고 있는 `block`에 저장된 내용이 출력되고, **CS 파일 시스템**일 경우 내용뿐만 아니라 블록 시작 번호, 연속된 블록 개수 정보가 같이 출력된다.
+ - 기존 파일 시스템의 경우 `DIRECT BLOCK`의 정보로써 사용하고 있는 `block`에 저장된 내용이 출력되고,
+ - **CS 파일 시스템**일 경우 내용뿐만 아니라 블록 시작 번호, 연속된 블록 개수 정보가 같이 출력됩니다.
 
 ### syscall.c
 ```c
 extern int sys_printinfo(void); // [os-prj5] printinfo
 ```
+
 ```c
 [SYS_printinfo]   sys_printinfo,  // [os-prj5] printinfo
 ```
- `printinfo` 시스템콜을 추가하기 위해 `syscall.c`에 해당 시스템콜을 위한 코드를 추가했다.
+
+ > `printinfo` 시스템콜을 추가하기 위해 `syscall.c`에 해당 시스템콜을 위한 코드를 추가했습니다.
 
 ### syscall.h
 ```h
@@ -1593,49 +1624,51 @@ int printinfo(int, const char*); // [os-prj5] printinfo
 ```S
 SYSCALL(printinfo)
 ```
- `syscall.h`, `user.h`, `usys.S`에도 `printinfo` 시스템콜을 위한 코드를 추가했다.
+ >  `syscall.h`, `user.h`, `usys.S`에도 `printinfo` 시스템콜을 위한 코드를 추가했습니다.
 
 ---
 ## (6) 테스트 파일 실행
 ### A. 연속적으로 데이터 쓰기
 
-CS 기반 파일을 생성하여 데이터를 1024B씩 130번 write 한다. 이후 이 파일에 대해 `printinfo`를 호출한다.
+ - CS 기반 파일을 생성하여 데이터를 1024B씩 130번 `write` 합니다. 
+ - 이후 이 파일에 대해 `printinfo`를 호출합니다.
 
 ![ftesta](https://github.com/simjeehoon/src_repository/blob/master/xv6-public/os-prj5/p1.png?raw=true)
 
-오른쪽 사진과 같이 2개의 **DIRECT BLOCK**을 사용하여 할당한 것을 확인할 수 있다.
+ > 우측 사진에서 보듯, 2개의 **DIRECT BLOCK**을 사용하여 할당한 것을 확인할 수 있습니다.
 
 ### B. 불연속적으로 데이터 쓰기
 
- 1과 마찬가지로 CS 기반 파일을 생성하여 데이터를 1024B씩 130번 write한다. 단, 51번째에 기존 파일 시스템 기반 파일을 생성하여 데이터를 1024B씩 2번 write한 뒤 이 파일에 대해 `printinfo`를 호출한다. CS파일도 130번 write를 한 뒤 `printinfo`를 호출한다. 
+ - 1과 마찬가지로 CS 기반 파일을 생성하여 데이터를 1024B씩 130번 write합니다. 
+ - 단, 51번째에 기존 파일 시스템 기반 파일을 생성하여 데이터를 1024B씩 2번 write한 뒤 이 파일에 대해 `printinfo`를 호출합니다. 
+ - CS파일도 130번 write를 한 뒤 `printinfo`를 호출합니다. 
 
 ![ftestb](https://github.com/simjeehoon/src_repository/blob/master/xv6-public/os-prj5/p2.png?raw=true)
 
-오른쪽 사진과 같이 출력된다. 일반 파일은 4개의 `DIRECT` 블록이 할당되었다. 이는 2048B만큼 데이터를 write하였기 때문이다. CS 기반 파일은 1번부터 51번째까지 총 51KB를 write했다. 따라서 0번째 `direct block`에 102개의 연속 블록이 할당되었다. 이후 새로운 `direct block`을 할당받아 52번부터 130번까지 총 79KB를 write했다. 따라서 158개의 연속 블록이 할당되었다.
+ - 우측 사진에서 보듯, **일반 파일**은 4개의 `DIRECT` 블록이 할당되었습니다. 이는 2048B만큼 데이터를 `write`하였기 때문입니다. 
+ - **CS 기반 파일**은 1번부터 51번째까지 총 51KB를 write했습니다. 따라서 0번째 `direct block`에 102개의 연속 블록이 할당되었습니다. 이후 새로운 `direct block`을 할당받아 52번부터 130번까지 총 79KB를 write했습니다. 따라서 158개의 연속 블록이 할당되었습니다.
 
 ![ftestb2](https://github.com/simjeehoon/src_repository/blob/master/xv6-public/os-prj5/p3.png?raw=true)
 
- `ls`와 `wc` 명령어를 사용하여 파일의 크기를 확인하였다. 모두 정상적으로 쓰기 작업이 수행되었다.
+ > `ls`와 `wc` 명령어를 사용하여 파일의 크기를 확인하였습니다. 모두 정상적으로 쓰기 작업이 수행되었습니다.
 
 ### C. 파일 읽기
 
 ![ftestc](https://github.com/simjeehoon/src_repository/blob/master/xv6-public/os-prj5/p4.png?raw=true)
 
-정상적으로 읽히는 것을 확인할 수 있었다.
+ > 정상적으로 읽히는 것을 확인할 수 있었습니다.
 
 ### D. 파일 제거
 
 ![ftestd](https://github.com/simjeehoon/src_repository/blob/master/xv6-public/os-prj5/p5.png?raw=true)
- 정상적으로 제거되는 것을 확인할 수 있었다.
+ > 정상적으로 제거되는 것을 확인할 수 있었습니다.
 
 ### E. 할당할 수 있는 데이터 블록이나 direct 블록의 범위를 초과할 경우 범위 내까지만 데이터 할당 후 에러 메시지 출력
 
+ - 할당할 수 있는 데이터 블록을 초과한 경우 `bcsalloc`에서 `panic`을 호출합니다.
 
+   - ![fteste](https://github.com/simjeehoon/src_repository/blob/master/xv6-public/os-prj5/p6.png?raw=true)
 
-할당할 수 있는 데이터 블록을 초과한 경우 `bcsalloc`에서 `panic`을 호출한다.
+ - 또는 CS 파일 시스템의 블록 포인터를 모두 사용해서 더 이상 할당이 불가능하면 `bcsmap`에서 다음과 같이 `panic`이 호출됩니다.
 
-![fteste](https://github.com/simjeehoon/src_repository/blob/master/xv6-public/os-prj5/p6.png?raw=true)
-
-또는 CS 파일 시스템의 블록 포인터를 모두 사용해서 더 이상 할당이 불가능하면 `bcsmap`에서 다음과 같이 `panic`이 호출된다.
-
-![fteste2](https://github.com/simjeehoon/src_repository/blob/master/xv6-public/os-prj5/p7.png?raw=true)
+   - ![fteste2](https://github.com/simjeehoon/src_repository/blob/master/xv6-public/os-prj5/p7.png?raw=true)
