@@ -199,9 +199,14 @@ XV6의 스케줄링, 파일시스템 개선하기
 
 ## (2) trace 시스템콜 추가
 
+- `trace()` 시스템콜은 인자로 넘어온 `mask`를 `proc` 구조체 변수에 저장합니다.
+- `mask`에서 특정 비트열이 1인 경우 **해당 비트열 번호의 시스템콜이 호출될 때마다 알려줍니다.**
+- 비트열 번호(시스템콜 번호)는 `syscall.h`에 정의한대로 동작합니다.
+- 예를 들어, `read` 시스템콜은 `5`번이므로 이것만 추적하려면 `(1<<5 = )32`를 `trace`의 인자로 넘기면 됩니다.
+
 > ![proc_tracemask](https://github.com/simjeehoon/src_repository/blob/master/xv6-public/os-prj2/image09.png?raw=true)
 > 
-> `trace` 시스템콜 구현을 위해 `proc.h`의 `proc` 구조체에 `uint tracemask`를 추가했습니다. 
+> - `trace` 시스템콜 구현을 위해 `proc.h`의 `proc` 구조체에 `uint tracemask`를 추가했습니다.
 
 > ![sys_trace](https://github.com/simjeehoon/src_repository/blob/master/xv6-public/os-prj2/image10.png?raw=true)
 >
