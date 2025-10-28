@@ -241,13 +241,19 @@ XV6의 스케줄링, 파일시스템 개선하기
 ---
 # 3. **XV6**의 더 효율적인 **스케줄링 알고리즘**을 적용
  - XV6의 기존 프로세스 스케줄러를 수정하여 개선합니다.
+ - 새로운 스케줄러의 이름은 `SSU Scheduler`입니다.
  - `./setup.sh 3`을 입력하시고 진행해주세요.
 
 > ## SSU Scheduler
-> - 새로운 스케줄러 이름은 `SSU Scheduler`라고 명명하였습니다.
 > - `SSU Scheduler`는 가중치(`weight`)와 우선순위(`priority`)를 이용하여 다음 프로세스를 결정합니다.
+> - `priority = old_priority + (time_slice / weight)` 이며, `time_slice` 값은 `10,000,000 ns` 입니다.
+> - SSU Scheduler를 위한 스케줄링 함수는 다음 실행될 프로세스로 `RUNNABLE`인 프로세스 중 가장 낮은 `priority` 값을 가진 프로세스를 선택합니다.
+> - `weight` 값은 프로세스 생성 순서에 따라 1부터 차례대로 증가시키며 부여합니다.
+> - 프로세스 생성 또는 `wake up` 시 `priority` 값을 0부터 부여하게 되면, 해당 프로세스가 독점 실행될 수 있으므로 관리
+하고 있는 프로세스의 `priority` 값 중 가장 작은 값을 부여합니다.(이것이 `ptable.minpriority`가 됩니다.)
+>> `wake up`이란 프로세스의 상태가 `SLEEPING`에서 `RUNNABLE`로 전이되는 것을 의미합니다.
 
- - 개선된 스케쥴링 함수의 동작 과정을 확인하기 위해 `sdebug` 명령어와 디버깅 기능도 XV6에 추가하겠습니다.
+ - 개선된 스케줄링 함수의 동작 과정을 확인하기 위해 `sdebug` 명령어와 이를 위한 `weightset` 시스템콜도 추가합니다.
  - `[os-prj3]` 주석을 달아 수정된 부분을 보기 쉽게 하였습니다.
 
 ## (1) SSU Scheduler의 scheduling 알고리즘으로 수정하기
@@ -256,23 +262,16 @@ XV6의 스케줄링, 파일시스템 개선하기
 
 ---
 
-`proc.h` 의 **`struct proc`**
+### proc.h 의 **`struct proc`**
 
 ```c
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
   pde_t* pgdir;                // Page table
-  char *kstack;                // Bottom of kernel stack for this process
-  enum procstate state;        // Process state
-  int pid;                     // Process ID
-  struct proc *parent;         // Parent process
-  struct trapframe *tf;        // Trap frame for current syscall
-  struct context *context;     // swtch() here to run process
-  void *chan;                  // If non-zero, sleeping on chan
-  int killed;                  // If non-zero, have been killed
-  struct file *ofile[NOFILE];  // Open files
-  struct inode *cwd;           // Current directory
+/*
+** ...
+**/
   char name[16];               // Process name (debugging)
 
   unsigned long priority;	   // [os-prj3] priority variable for scheduling
@@ -282,7 +281,7 @@ struct proc {
 > 가중치(`weight`)와 우선순위(`priority`)를 `proc` 구조체에 추가했습니다.
 
 
-`proc.c` 의 **`ptable`**
+### `proc.c` 의 **`ptable`**
 
 ```c
 struct {
@@ -291,18 +290,27 @@ struct {
   unsigned long minpriority;			// [os-prj3] min priority for new process
 } ptable;
 ```
-> 프로세스를 생성하거나 wake up할때 `proc`.`priority`에 할당할 가장 작은 값을 `ptable`의 `minpriority` 변수로 추가합니다.
+> 프로세스를 생성하거나 `wake up`할때 `proc` 구조체의 `priority`에 할당할 가장 작은 값은 `ptable`의 `minpriority`으로부터 얻습니다.
 
 
  * `proc` 은 프로세스의 정보들이 담기는 구조체입니다.
- * 런타임에 `proc`들은 `ptable.proc` 배열에 존재합니다.
- 
- * 결국 처음에는 `NPROC` 개수만큼의, 상태가 `UNUSED`인 `proc` 구조체 변수가 생기게 됩니다.
+ * 런타임에 `proc`들은 `ptable`에 있습니다.
  * 이 `ptable`은 공유 자원이므로 `acquire(&ptable.lock)` 및 `require(&ptable.lock)`을 이용해 접근을 제한해야 합니다.
- 
+
+---
+`proc.c`의 전역변수 `nextweight`
+
+```c 
+int nextpid = 1;
+unsigned long nextweight = 1;  // [os-prj3] weight value for new process
+extern void forkret(void);
+```
+
+ - SSU Scheduler의 구현을 위해 전역변수 `nextweight`을 추가하고 1로 할당하였습니다. 
+
 ---
 
-`proc.c`의 **`allocproc`**
+### `proc.c`의 **`allocproc`**
 
 ```c
 //PAGEBREAK: 32
@@ -358,25 +366,15 @@ found:
 }
  ```
 
- - `allocproc()`은 `ptable`의 `proc` 배열에서 상태가 `UNUSED`인 것을 하나 골라 `EMBRYO`로 바꿉니다.
- - 이것을 커널에서 요구하는 상태로 바꿔서 프로세스를 반환합니다.
+ - `allocproc()`은 `ptable`의 `proc` 배열에서 상태가 `UNUSED`인 것을 하나 골라 `EMBRYO`로 바꿉니다. 이것을 커널에서 요구하는 상태로 바꿔서 프로세스를 반환합니다.
  - `allocproc()`은 `fork`를 수행할 때, `userinit`을 이용하여 최초의 프로세스를 생성할 때 사용합니다.
-
----
-`proc.c`의 전역변수 `nextweight`
-
-```c 
-int nextpid = 1;
-unsigned long nextweight = 1;  // [os-prj3] weight value for new process
-extern void forkret(void);
-```
-
- - SSU Scheduler의 구현을 위해 전역변수 `nextweight`을 추가하고 1로 할당하였습니다. 
- - 수정된 `allocproc`에서 `nextweight`과 `ptable.minpriority`를 새로운 프로세스에 할당합니다.
+ - 수정된 `allocproc()`은 `nextweight`과 `ptable.minpriority`를 새로운 프로세스에 할당합니다.
  - `nextweight`은 `allocproc`에서 프로세스를 할당할 때마다 1 증가합니다.
 
+
 ---
-`proc.c`의 `userinit`
+### `proc.c`의 `userinit`
+
 ```c
 //PAGEBREAK: 32
 // Set up first user process.
@@ -422,12 +420,13 @@ userinit(void)
 ```
 
 - `userinit`은 `allocproc`으로 `proc`을 할당받고, 최초의 유저 프로세스 `initcode`를 실행합니다.
-- `initcode`는 `init`을 생성하고, `init`은 `sh`을 생성하게 됩니다. *(priority가 1과 2가 됩니다.)*
-- 최초의 유저 프로세스는 `priority` 값이 3이어야 하므로, `ptable.minpriority`를 3으로 할당합니다.
+- `initcode`는 `init`을 생성하고, `init`은 `sh`을 생성하게 됩니다.
+- 시스템 시작 시 총 세 개의 유저 프로세스(`initcode`, `init`, `sh`)가 생성되기 때문에 최소 `priority` 값을 3으로
+지정했습니다.
 
 ---
 
-`proc.c`의 `wakeup1`
+### `proc.c`의 `wakeup1`
 
 ```c
 //PAGEBREAK!
@@ -446,7 +445,7 @@ wakeup1(void *chan)
 }
 ```
  
- - wake up시에도 `priority`를 가장 작은 값으로 할당해야 합니다.
+ - `wake up`시에도 `priority`를 가장 작은 값으로 할당해야 합니다.
  
  - `schduler` 관련 함수는 `scheduler`와 `sched`가 있습니다.
  
@@ -463,7 +462,7 @@ wakeup1(void *chan)
 
 ---
 
-`proc.c`의 **`scheduler`** 원본 코드
+### `proc.c`의 **`scheduler`** 원본 코드
 
 ```c
 void
@@ -511,7 +510,7 @@ scheduler(void)
 - 특정 프로세스가 집중적으로 수행되어 제어권이 공정하게 전달되지 않을 수 있습니다.
 - **SSU Scheduler에서는 이를 해결하려고 합니다.**
 
-**개선된 SSU Scheduler의 `scheduler`**
+### 개선된 SSU Scheduler의 `scheduler`
 
 ```c
 void
@@ -528,13 +527,7 @@ scheduler(void)
   for(;;){
 	selected = (void*)0; // [os-prj3] Set NULL to selected process pointer.
 	updated = 0;  // [os-prj3] Set update to 0.
-```
-> - 프로세스 선정을 위한 `struct proc` 포인터 `selected`를 추가하였습니다.
-> - SSU Scheduler는 가장 작은 `priority`를 선택하는 스케줄러이므로 비교를 위한 변수 `minpriority`를 추가하였습니다.
-> - 이외에 구현을 위해 플래그 변수인 `updated`를 추가하였습니다.
 
-
-```c
     // Enable interrupts on this processor.
     sti();
     // Loop over process table looking for process to run.
@@ -579,9 +572,10 @@ scheduler(void)
       // Process is done running for now.
       // It should have changed its p->state before coming back.
 
-	  // [os-prj3] Calculate new priority.
-#define TIME_SLICE 10000000L
+	  //**** [os-prj3] Calculate new priority. (time_slice = 10,000,000 ns)
+#define TIME_SLICE 10000000L  
 	  selected->priority = selected->priority + (TIME_SLICE / selected->weight);
+    //**** [os-prj3] priority = old_priority + (time_slice / weight) 구현
 
 	  /** 
 		 [os-prj3] Search min priority.
@@ -589,7 +583,7 @@ scheduler(void)
 	  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
 		if(p->state == RUNNABLE){ 
 		  if(!updated || minpriority > p->priority){
-			updated = 1; // [os-prj3] Set update to 1.
+			updated = 1; // [os-prj3] Set update 플래그 to 1.
 			minpriority = p->priority;
 		  }
 		}
@@ -605,7 +599,7 @@ scheduler(void)
 }
 ```
  > - 만일 `selected`에 프로세스가 배정되었다면, 사전 작업을 수행하고 해당 프로세스에 제어권을 전달합니다. **(콘텍스트 스위칭)**
- > - 다시 `scheduler`로 복귀하였다면 수행한 프로세스의 `priority`를 갱신합니다.
+ > - 다시 `scheduler()`로 돌아오면, `priority = old_priority + (time_slice / weight)` 및 `(time_slice = 10,000,000 ns)`를 수행합니다.
  > - 마지막으로, 최소 `priority`를 검색하고 `ptable.minpriority`값을 갱신합니다.
 
 --- 
@@ -617,7 +611,7 @@ CPUS := 1
 endif
  ```
 
- > 스케줄링 함수의 동작 과정을 잘 살펴보기 위해 `Makefile`에서 `CPUS`를 `1`로 설정했습니다.
+ > `Makefile`에서 `CPUS`를 `1`로 설정했습니다. 스케줄러의 성능 확인을 위함입니다.
 
 ---
 
