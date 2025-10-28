@@ -65,8 +65,9 @@ if [ $# -eq 0 ]; then
         echo "=========================================================="
         echo "원하는 인자 번호(1, 2, 3, 5)와 함께 스크립트를 실행하십시오."
         echo ""
-        echo "  $0 [번호]"
+        echo "  $0 [번호] [옵션이 있다면 옵션 입력]"
         echo "  예시: $0 3"
+        echo "  예시: $0 3 n"
         echo "=========================================================="
     else
         echo "오류: $DATA_DIR/Makefile 덮어쓰기 실패." >&2
@@ -121,6 +122,51 @@ elif [ $# -eq 1 ]; then
         exit 1
     fi
 
+# 인자가 3 n 인경우 특별 처리
+elif [ $# -eq 2 ] && [ "$1" = "3" ] && [ "$2" = "n" ]; then
+    if [ ! -d "$TARGET_DIR" ]; then
+            echo "오류: 대상 디렉토리 ($TARGET_DIR)가 존재하지 않습니다. 먼저 인자 없이 스크립트 ($0)를 실행하여 Git Clone을 수행해야 합니다." >&2
+            exit 1
+        fi
+
+        # Git 초기 상태로 되돌리기 (모든 로컬 변경사항 및 untracked 파일 제거)
+        if cd "$TARGET_DIR"; then
+            echo "-> Git 레포지토리의 모든 로컬 변경사항을 강제로 제거합니다."
+            git reset --hard
+            echo "-> 추적되지 않은 파일 및 디렉토리들을 제거합니다."
+            git clean -fdx
+            
+            cd ..
+            echo "-> Git 레포지토리를 깨끗한 초기로 되돌렸습니다."
+        else
+            echo "오류: $TARGET_DIR 디렉토리로 이동할 수 없습니다. Git 초기화 실패." >&2
+            exit 1
+        fi
+
+        PARAM="3_normal"
+        SOURCE_SUBDIR="$DATA_DIR/$PARAM"
+        
+        if [ ! -d "$SOURCE_SUBDIR" ]; then
+            echo "오류: $SOURCE_SUBDIR 디렉토리가 존재하지 않습니다." >&2
+            exit 1
+        fi
+        
+        echo "-> $SOURCE_SUBDIR 디렉토리 내부의 파일을 $TARGET_DIR에 복사합니다. (복사 목록 출력)"
+
+        # rsync를 사용하여 복사되는 파일 목록을 자세히 출력
+        rsync -av --progress "$SOURCE_SUBDIR/" "$TARGET_DIR"
+
+        if [ $? -eq 0 ]; then
+            echo "$SOURCE_SUBDIR 내용 덮어쓰기 완료. (project 3의 일반 스케줄러 버전)"
+        else
+            echo "오류: $SOURCE_SUBDIR 내용 덮어쓰기 실패." >&2
+            exit 1
+        fi
+
+    else
+        echo "오류: 허용되지 않은 인자입니다. 인자는 1, 2, 3, 5 중 하나여야 합니다." >&2
+        exit 1
+    fi
 # 인자가 1개 초과인 경우
 else
     echo "오류: 인자는 없거나 1, 2, 3, 5 중 하나만 지정해야 합니다." >&2

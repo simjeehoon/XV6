@@ -627,7 +627,7 @@ endif
 > * 부모 프로세스는 자식을 모두 생성했다면, `wait` 시스템콜을 이용하여 자식이 모두 종료될 때까지 기다립니다.
 > * 인자로 들어온 `weight`값으로 프로세스의 가중치를 결정하는 `weightset` 시스템콜을 구현하기 위해 `proc.c`에 `do_weightset` 함수를 만들었습니다. 구현부는 아래와 같습니다.
 
-`proc.c`에 추가한 **`do_weightset`**의 구현부
+### `proc.c`에 추가한 **`do_weightset`**의 구현부
 ```c
 /**
  [os-prj3]
@@ -642,7 +642,7 @@ void do_weightset(unsigned long w){
 }
 ```
 
-`defs.h`에 추가한 **`do_weightset`**의 선언
+### `defs.h`에 추가한 **`do_weightset`**의 선언
 
 ```c
 void	do_weightset(unsigned long w); // [os-prj3] for weightset system call
@@ -679,6 +679,7 @@ sys_weightset(void)
 ```c
 extern int sys_weightset(void); // [os-prj3]
 ```
+
 ```c
 [SYS_weightset]   sys_weightset, // [os-prj3]
 ```
@@ -709,6 +710,7 @@ EXTRA=\
 	README dot-bochsrc *.pl toc.* runoff runoff1 runoff.list\
 	.gdbinit.tmpl gdbutil\
 ```
+
 ```Makefile
 UPROGS=\
 	_cat\
