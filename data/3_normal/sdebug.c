@@ -1,6 +1,7 @@
 #include "types.h"
 #include "stat.h"
 #include "user.h"
+#include "procstat.h"
 
 #define PNUM 20
 #define PRINT_CYCLE 100000000

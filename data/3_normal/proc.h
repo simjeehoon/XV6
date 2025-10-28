@@ -62,3 +62,11 @@ struct proc {
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
+
+// ==========================================================
+// [os-prj3] ptable 외부 선언 추가
+// ==========================================================
+extern struct {
+  struct spinlock lock;
+  struct proc proc[NPROC];
+} ptable;

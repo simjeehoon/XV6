@@ -1,16 +1,6 @@
+#include "procstat.h"
 struct stat;
 struct rtcdate;
-
-// [os-prj3]
-// for get_proc_stats
-struct proc_stat {
-    int pid;
-    int weight;
-    int arrival_time;
-    int completion_time;
-    int cpu_time;
-    int first_run_time;
-};
 
 // system calls
 int fork(void);
