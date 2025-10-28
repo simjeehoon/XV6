@@ -2,8 +2,8 @@
 #include "stat.h"
 #include "user.h"
 
-#define PNUM 5
-#define PRINT_CYCLE 10000000
+#define PNUM 50
+#define PRINT_CYCLE 100000000
 #define TOTAL_COUNTER 500000000
 
 void sdebug_func(void)
@@ -28,7 +28,7 @@ void sdebug_func(void)
 	  */
 	  while(counter < PRINT_CYCLE)
 		++counter;
-	  printf(1, "PID: %d, WEIGHT: %d, TIMES: %d ms\n", getpid(), i, (uptime()-start)*10);
+	  printf(1, "[Print] PID: %d, WEIGHT: %d, TIMES: %d ms\n", getpid(), i, (uptime()-start)*10);
 
 	  /*
 		 [os-prj3] Count TOTAL_COUNTER
@@ -36,7 +36,7 @@ void sdebug_func(void)
 	  */
 	  while(counter < TOTAL_COUNTER)
 		++counter;
-	  printf(1, "PID: %d terminated\n", getpid());
+	  printf(1, "[Terminated] PID: %d, WEIGHT: %d, TIMES: %d ms\n", getpid(), i, (uptime()-start)*10);
 	  exit();
 	}
 	else if(pid > 0) // [os-prj3] Parent process
