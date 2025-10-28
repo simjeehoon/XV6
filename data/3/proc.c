@@ -92,6 +92,14 @@ found:
   p->pid = nextpid++;
   p->weight = nextweight++; // [os-prj3] Set weight
   p->priority = ptable.minpriority; // [os-prj3] Set min priority
+ 
+  // ==========================================================
+  // [os-prj3] 성능측정 코드
+  // ==========================================================
+  p->arrival_time = ticks;       // 1. 프로세스 생성(도착) 시간 기록
+  p->completion_time = 0;
+  p->cpu_time = 0;
+  p->first_run_time = -1;        // 4. -1로 초기화하여 아직 실행되지 않았음을 표시
 
   release(&ptable.lock);
 
@@ -255,6 +263,11 @@ exit(void)
   end_op();
   curproc->cwd = 0;
 
+  // ==========================================================
+  // [os-prj3] Completion Time 기록
+  // ==========================================================
+  p->completion_time = ticks; // [os-prj3] 프로세스 종료 시간 기록
+
   acquire(&ptable.lock);
 
   // Parent might be sleeping in wait().
@@ -368,7 +381,14 @@ scheduler(void)
 		printul(selected->priority);
 		cprintf("\n");
 #endif
-
+      
+      // ==========================================================
+      // [os-prj3] First Run Time 기록
+      // ==========================================================
+      if (p->first_run_time == -1) {
+          p->first_run_time = ticks; // 처음 실행되는 경우 현재 ticks 기록
+      }
+      
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.

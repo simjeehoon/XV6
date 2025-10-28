@@ -1,6 +1,17 @@
 struct stat;
 struct rtcdate;
 
+// [os-prj3]
+// for get_proc_stats
+struct proc_stat {
+    int pid;
+    int weight; 
+    int arrival_time;
+    int completion_time;
+    int cpu_time;
+    int first_run_time;
+};
+
 // system calls
 int fork(void);
 int exit(void) __attribute__((noreturn));
@@ -24,6 +35,7 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 int weightset(int weight); // [os-prj3] weight set sys call
+int get_proc_stats(int pid, struct proc_stat *stats); // [os-prj3] 프로세스 상태 가져오기
 
 // ulib.c
 int stat(const char*, struct stat*);

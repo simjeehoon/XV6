@@ -49,6 +49,12 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+
+  // [os-prj3] 성능측정을 위한 변수들
+  int arrival_time;         // 1. 프로세스가 생성된 시점의 ticks
+  int completion_time;      // 2. 프로세스가 종료된 시점의 ticks
+  int cpu_time;             // 3. 프로세스가 CPU를 사용한 누적 ticks 수
+  int first_run_time;       // 4. Ready Queue에서 처음 실행된 시점의 ticks (초기값 -1)
 };
 
 // Process memory is laid out contiguously, low addresses first:

@@ -22,3 +22,4 @@
 #define SYS_close  21
 // [os-prj3] 
 #define SYS_weightset 22
+#define SYS_get_proc_stats 23 
