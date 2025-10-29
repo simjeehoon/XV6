@@ -576,28 +576,52 @@ void do_weightset(unsigned long w){
 
 /**
  [os-prj3]
-  프로세스의 상태를 반환하는 함수
+  자식의 상태를 반환하는 wait
  */
-void do_get_pstat(int pid, struct proc_stat *proc_stat){
-    struct proc *p;
-    
-    // [os-prj3] 프로세스 테이블을 잠그고 (lock) 해당 pid의 프로세스를 찾음
-    acquire(&ptable.lock);
+int
+waitx(struct proc_stat *proc_stat)
+{
+  struct proc *p;
+  int havekids, pid;
+  struct proc *curproc = myproc();
+  
+  acquire(&ptable.lock);
+  for(;;){
+    // Scan through table looking for exited children.
+    havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-        if(p->pid == pid){
-            // [os-prj3] 커널 데이터(p->...)를 사용자 구조체(*stats)로 복사
-            proc_stat->pid = p->pid;
-            proc_stat->weight = 1;  // [os-prj3] 의미없는 변수
-            proc_stat->arrival_time = p->arrival_time;
-            proc_stat->completion_time = p->completion_time;
-            proc_stat->cpu_time = p->cpu_time;
-            proc_stat->first_run_time = p->first_run_time;
-
-            release(&ptable.lock);
-            return; // [os-prj3] 성공
-        }
+      if(p->parent != curproc)
+        continue;
+      havekids = 1;
+      if(p->state == ZOMBIE){
+        // Found one.
+        // [os-prj3] 자식 상태를 모두 저장한다.
+        proc_stat->arrival_time = p->arrival_time;
+        proc_stat->completion_time = p->completion_time;
+        proc_stat->cpu_time = p->cpu_time;
+        proc_stat->first_run_time = p->first_run_time;
+        // 나머지 정보 저장
+        pid = p->pid;
+        kfree(p->kstack);
+        p->kstack = 0;
+        freevm(p->pgdir);
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->killed = 0;
+        p->state = UNUSED;
+        release(&ptable.lock);
+        return pid;
+      }
     }
 
-    proc_stat->pid = -1; // [os-prj3] 실패를 의미.
-    release(&ptable.lock); // [os-prj3] 실패
+    // No point waiting if we don't have any children.
+    if(!havekids || curproc->killed){
+      release(&ptable.lock);
+      return -1;
+    }
+
+    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    sleep(curproc, &ptable.lock);  //DOC: wait-sleep
+  }
 }

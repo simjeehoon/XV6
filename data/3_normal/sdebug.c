@@ -9,13 +9,13 @@
 
 char *scheduler_name = "normal_scheduler";
 
-typedef struct process_stat{
+typedef struct process_data{
     int pid;
-    int at, ct, cput, ft;
+    struct proc_stat proc_stat;
     int tt, wt, rt;
-} Pstat;
+} Pdata;
 
-Pstat pstat[PNUM];
+Pdata pdata[PNUM];
 
 // [os-prj3] 종합 통계 변수
 int total_waiting_time = 0;
@@ -28,22 +28,16 @@ int success_count = 0;
 int min_arrival_time = -1; // 가장 먼저 시작한 프로세스의 arrival_time
 int max_completion_time = 0; // 가장 늦게 종료된 프로세스의 completion_time
 
-void print_each_process()
+void print_each_process(Pdata *pdata)
 {
     int i;
-    printf(1, "Individual Process Result of %s\n", scheduler_name);
-    for(i=0;i<PNUM;i++){
-        // [os-prj3] 개별 프로세스의 상세 결과 출력
-        printf(1, " PID:%d | AT:%d, CT:%d, CPUT:%d, FT:%d | TT:%d, WT:%d, RT:%d\n",
-            pstat[i].pid, 
-            pstat[i].at, 
-            pstat[i].ct, 
-            pstat[i].cput, 
-            pstat[i].ft,
-            pstat[i].tt, 
-            pstat[i].wt, 
-            pstat[i].rt);     
-    }
+    // [os-prj3] 개별 프로세스의 상세 결과 출력
+    printf(1, " PID:%d | AT:%d, CT:%d, CPUT:%d, FT:%d | TT:%d, WT:%d, RT:%d\n",
+        pdata->pid, 
+        pdata->proc_stat->arrival_time, pdata->proc_stat->completion_time, 
+        pdata->proc_stat->cpu_time, pdata->proc_stat->first_run_time,
+        pdata->tt, pdata->wt, pdata->rt
+    );      
 }
 
 void print_statistics()
@@ -75,7 +69,7 @@ void sdebug_func(void)
     volatile long counter = 0;
     
     int terminated_pid; // 종료 프로세스의 pid
-    int turnaround, waiting, response; // 시간 변수
+
     struct proc_stat proc_stat; // 프로세스 상태
 	
     printf(1, "Start sdebug command - %s\n", scheduler_name);
@@ -107,60 +101,51 @@ void sdebug_func(void)
         }
     }
     
-    // ==========================================================
+    
     // [os-prj3] 부모 프로세스의 통계 수집 및 계산
-    // ==========================================================
+    
+    int turnaround, waiting, response; // 시간 변수
+
     for(i = 0 ; i < PNUM ; i++) {
-        terminated_pid = wait(); // 자식이 종료될 때까지 대기하고 PID를 받음
+        terminated_pid = waitx(&proc_stat); // 자식이 종료될때까지 대기하고 proc_stat을 받음
 
         if (terminated_pid > 0) {
-            // 새로 추가한 시스템 콜을 호출하여 커널 통계 데이터 추출
-            if (get_pstats(terminated_pid, &proc_stat) == 0) {
-                // 1. 반환 시간 (Turnaround Time): 종료 시간 - 도착 시간
-                turnaround = proc_stat.completion_time - proc_stat.arrival_time;
-                
-                // 2. 대기 시간 (Waiting Time): 반환 시간 - CPU 사용 시간
-                waiting = turnaround - proc_stat.cpu_time;
-                
-                // 3. 응답 시간 (Response Time): 첫 실행 시간 - 도착 시간
-                response = proc_stat.first_run_time - proc_stat.arrival_time;
+            // 1. 반환 시간 (Turnaround Time): 종료 시간 - 도착 시간
+            turnaround = proc_stat.completion_time - proc_stat.arrival_time;
+            // 2. 대기 시간 (Waiting Time): 반환 시간 - CPU 사용 시간
+            waiting = turnaround - proc_stat.cpu_time;
+            // 3. 응답 시간 (Response Time): 첫 실행 시간 - 도착 시간
+            response = proc_stat.first_run_time - proc_stat.arrival_time;
 
-				// 총 시간 추적
-                if (min_arrival_time == -1 || proc_stat.arrival_time < min_arrival_time) {
-                    min_arrival_time = proc_stat.arrival_time;
-                }
-                if (proc_stat.completion_time > max_completion_time) {
-                    max_completion_time = proc_stat.completion_time;
-                }
-
-                // 통계 누적
-                total_turnaround_time += turnaround;
-                total_waiting_time += waiting;
-                total_response_time += response;
-                total_cpu_time += proc_stat.cpu_time;
-                success_count++;
-                
-                // 데이터 저장
-                pstat[i].pid = proc_stat.pid;
-                pstat[i].at = proc_stat.arrival_time;
-                pstat[i].ct = proc_stat.completion_time;
-                pstat[i].cput = proc_stat.cpu_time;
-                pstat[i].ft = proc_stat.first_run_time;
-                pstat[i].tt = turnaround;
-                pstat[i].wt = waiting;
-                pstat[i].rt = response;
-
-            } else {
-                printf(1, "ERROR: Failed to get stats for PID %d\n", terminated_pid);
+            // 총 시간 추적
+            if (min_arrival_time == -1 || proc_stat.arrival_time < min_arrival_time) {
+                min_arrival_time = proc_stat.arrival_time;
             }
+            if (proc_stat.completion_time > max_completion_time) {
+                max_completion_time = proc_stat.completion_time;
+            }
+
+            // 통계 누적
+            total_turnaround_time += turnaround;
+            total_waiting_time += waiting;
+            total_response_time += response;
+            total_cpu_time += proc_stat.cpu_time;
+            success_count++;
+            
+            // 값 저장
+            pdata[i].pid = terminated_pid;
+            pdata[i].proc_stat = proc_stat;
+            pdata[i].tt = turnaround;
+            pdata[i].wt = waiting;
+            pdata[i].rt = response;
         }
     }
 
-    // ==========================================================
     // [os-prj3] 최종 평균 성능 지표 출력
-    // ==========================================================
     if (success_count > 0) {
-        print_each_process();
+        printf(1, "Individual Process Result of %s\n", scheduler_name);
+        for(i=0 ; i < PNUM ; i++)
+            print_each_process(pdata+i);
         printf(1, "--------------------------------------------------------\n");
         print_statistics();
         printf(1, "--------------------------------------------------------\n");

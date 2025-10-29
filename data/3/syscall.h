@@ -22,4 +22,4 @@
 #define SYS_close  21
 // [os-prj3] 
 #define SYS_weightset 22
-#define SYS_get_pstats 23 
+#define SYS_waitx 23 

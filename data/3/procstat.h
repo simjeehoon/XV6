@@ -3,7 +3,6 @@
 
 // [os-prj3] 프로세스 통계를 위한 구조체
 struct proc_stat {
-    int pid;
     int weight;
     int arrival_time;
     int completion_time;

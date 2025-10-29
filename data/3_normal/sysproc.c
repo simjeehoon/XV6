@@ -107,22 +107,15 @@ sys_weightset(void)
   return weight;
 }
 
-// [os-prj3] 프로세스 상태를 얻는 시스템콜
+// [os-prj3] wait을 하되, 자식의 프로세스 상태를 넘긴다.
 int
-sys_get_pstats(void)
+sys_waitx(void)
 {
-    int pid;
     struct proc_stat *proc_stat;
 
-    // [os-prj3] 1. 사용자로부터 pid와 통계 구조체의 주소(포인터)를 가져옴
-    if(argint(0, &pid) < 0)
-        return -1;
-    if(argptr(1, (void*)&proc_stat, sizeof(struct proc_stat)) < 0)
+    // [os-prj3] 사용자로부터 pid와 통계 구조체의 주소(포인터)를 가져옴
+    if(argptr(0, (void*)&proc_stat, sizeof(struct proc_stat)) < 0)
         return -1;
 
-    do_get_pstat(pid, proc_stat);
-    if(proc_stat->pid == -1){
-      return -1; // [os-prj3] 프로세스를 찾지 못함
-    }
-    return 0; // [os-prj3] 성공
+    return waitx(proc_stat);
 }
