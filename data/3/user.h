@@ -1,4 +1,3 @@
-#include "procstat.h"
 struct stat;
 struct rtcdate;
 
@@ -25,7 +24,6 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 int weightset(int weight); // [os-prj3] weight set sys call
-int waitx(struct proc_stat *stats); // [os-prj3] 자식 프로세스의 상태 제공 wait
 
 // ulib.c
 int stat(const char*, struct stat*);

@@ -6,7 +6,6 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-#include "procstat.h"
 
 struct {
   struct spinlock lock;
@@ -93,14 +92,6 @@ found:
   p->pid = nextpid++;
   p->weight = nextweight++; // [os-prj3] Set weight
   p->priority = ptable.minpriority; // [os-prj3] Set min priority
- 
-  // ==========================================================
-  // [os-prj3] 성능측정 코드
-  // ==========================================================
-  p->arrival_time = ticks;       // 1. 프로세스 생성(도착) 시간 기록
-  p->completion_time = 0;
-  p->cpu_time = 0;
-  p->first_run_time = -1;        // 4. -1로 초기화하여 아직 실행되지 않았음을 표시
 
   release(&ptable.lock);
 
@@ -264,11 +255,6 @@ exit(void)
   end_op();
   curproc->cwd = 0;
 
-  // ==========================================================
-  // [os-prj3] Completion Time 기록
-  // ==========================================================
-  p->completion_time = ticks; // [os-prj3] 프로세스 종료 시간 기록
-
   acquire(&ptable.lock);
 
   // Parent might be sleeping in wait().
@@ -382,14 +368,6 @@ scheduler(void)
 		printul(selected->priority);
 		cprintf("\n");
 #endif
-      
-      // ==========================================================
-      // [os-prj3] First Run Time 기록
-      // ==========================================================
-      if (p->first_run_time == -1) {
-          p->first_run_time = ticks; // 처음 실행되는 경우 현재 ticks 기록
-      }
-      
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
@@ -535,7 +513,7 @@ wakeup1(void *chan)
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == SLEEPING && p->chan == chan){
-	  p->priority = ptable.minpriority;	// [os-prj3] Set priority to min priority.
+	    p->priority = ptable.minpriority;	// [os-prj3] Set priority to min priority.
       p->state = RUNNABLE;
 	}
 }
@@ -619,57 +597,4 @@ void do_weightset(unsigned long w){
   struct proc *p = myproc(); 
   p->weight = w;
   release(&ptable.lock);
-}
-
-/**
- [os-prj3]
-  자식의 상태를 반환하는 wait
- */
-int
-waitx(struct proc_stat *proc_stat)
-{
-  struct proc *p;
-  int havekids, pid;
-  struct proc *curproc = myproc();
-  
-  acquire(&ptable.lock);
-  for(;;){
-    // Scan through table looking for exited children.
-    havekids = 0;
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->parent != curproc)
-        continue;
-      havekids = 1;
-      if(p->state == ZOMBIE){
-        // Found one.
-        // [os-prj3] 자식 상태를 모두 저장한다.
-        proc_stat->weight = p->weight;
-        proc_stat->arrival_time = p->arrival_time;
-        proc_stat->completion_time = p->completion_time;
-        proc_stat->cpu_time = p->cpu_time;
-        proc_stat->first_run_time = p->first_run_time;
-        // 나머지 정보 저장
-        pid = p->pid;
-        kfree(p->kstack);
-        p->kstack = 0;
-        freevm(p->pgdir);
-        p->pid = 0;
-        p->parent = 0;
-        p->name[0] = 0;
-        p->killed = 0;
-        p->state = UNUSED;
-        release(&ptable.lock);
-        return pid;
-      }
-    }
-
-    // No point waiting if we don't have any children.
-    if(!havekids || curproc->killed){
-      release(&ptable.lock);
-      return -1;
-    }
-
-    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
-    sleep(curproc, &ptable.lock);  //DOC: wait-sleep
-  }
 }

@@ -6,7 +6,6 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
-#include "procstat.h" // [os-prj3] 프로세스 통계를 위한 헤더
 
 int
 sys_fork(void)
@@ -105,18 +104,4 @@ sys_weightset(void)
 	return -1; 
   do_weightset((unsigned long)weight);
   return weight;
-}
-
-
-// [os-prj3] wait을 하되, 자식의 프로세스 상태를 넘긴다.
-int
-sys_waitx(void)
-{
-    struct proc_stat *proc_stat;
-
-    // [os-prj3] 사용자로부터 pid와 통계 구조체의 주소(포인터)를 가져옴
-    if(argptr(0, (void*)&proc_stat, sizeof(struct proc_stat)) < 0)
-        return -1;
-
-    return waitx(proc_stat);
 }

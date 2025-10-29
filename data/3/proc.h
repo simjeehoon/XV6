@@ -53,11 +53,6 @@ struct proc {
   unsigned long priority;	   // [os-prj3] priority variable for scheduling
   unsigned long weight;			 // [os-prj3] weight variable for scheduling
 
-  // [os-prj3] 프로세스 통계를 위해 성능을 측정하는 변수.
-  uint arrival_time;         // 1. 프로세스가 생성된 시점의 ticks
-  uint completion_time;      // 2. 프로세스가 종료된 시점의 ticks
-  uint cpu_time;             // 3. 프로세스가 CPU를 사용한 누적 ticks 수
-  uint first_run_time;       // 4. Ready Queue에서 처음 실행된 시점의 ticks (초기값 -1)
 };
 
 // Process memory is laid out contiguously, low addresses first:

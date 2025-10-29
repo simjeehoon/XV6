@@ -9,7 +9,6 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
-struct proc_stat; // [os-prj3]
 
 // bio.c
 void            binit(void);
@@ -124,7 +123,6 @@ int             wait(void);
 void            wakeup(void*);
 void            yield(void);
 void			do_weightset(unsigned long w); // [os-prj3] for weightset system call
-int             waitx(struct proc_stat *proc_stat);  // [os-prj3] Wait that returns the status of a child process
 
 // swtch.S
 void            swtch(struct context**, struct context*);
