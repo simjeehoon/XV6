@@ -7,13 +7,13 @@
 #define PRINT_CYCLE   100000000
 #define TOTAL_COUNTER 500000000
 
-char *scheduler_name = "SSU scheduler"
+char *scheduler_name = "SSU scheduler";
 
 typedef struct process_stat{
     int pid, weight;
     int at, ct, cput, ft;
     int tt, wt, rt;
-}Pstat;
+} Pstat;
 
 Pstat pstat[PNUM];
 
@@ -31,7 +31,7 @@ int max_completion_time = 0; // 가장 늦게 종료된 프로세스의 completi
 void print_each_process()
 {
     int i;
-    printf("Individual Process Result of %s\n", scheduler_name);
+    printf(1, "Individual Process Result of %s\n", scheduler_name);
     for(i=0;i<PNUM;i++){
         // [os-prj3] 개별 프로세스의 상세 결과 출력
         printf(1, " PID:%d WEIGHT:%d | AT:%d, CT:%d, CPUT:%d, FT:%d | TT:%d, WT:%d, RT:%d\n",
@@ -122,7 +122,7 @@ void sdebug_func(void)
 
         if (terminated_pid > 0) {
             // 새로 추가한 시스템 콜을 호출하여 커널 통계 데이터 추출
-            if (get_pstats(terminated_pid, &proc_stat)) == 0) {
+            if (get_pstats(terminated_pid, &proc_stat) == 0) {
                 // 1. 반환 시간 (Turnaround Time): 종료 시간 - 도착 시간
                 turnaround = proc_stat.completion_time - proc_stat.arrival_time;
                 
