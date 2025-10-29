@@ -89,7 +89,7 @@ fi
 case $# in
 
     0) # 인자가 없는 경우 (Git Clone 및 Makefile 덮어쓰기)
-        echo "--- 인자 0개: Git 초기 설정 모드 ---"
+        echo "--- Git Clone $TARGET_DIR ---"
         if [ -d "$TARGET_DIR" ]; then
             echo "대상 디렉토리 ($TARGET_DIR)가 이미 존재합니다. Git 초기화 명령을 수행합니다."
             if ! cleanup_git_repo; then exit 1; fi
@@ -115,7 +115,7 @@ case $# in
 
     1) # 인자가 1개인 경우 (Git 초기화 후 파일 덮어쓰기)
         PARAM=$1
-        echo "--- 인자 1개: $PARAM 프로젝트 모드 ---"
+        echo "--- Project $PARAM ---"
 
         if [[ "$PARAM" =~ ^[1235]$ ]]; then
             # 대상 디렉토리 존재 확인 및 Git 초기화
@@ -133,7 +133,7 @@ case $# in
         ;;
 
     2) # 인자가 2개인 경우 (특별 처리: '3 n' 확인)
-        echo "--- 인자 2개: 특별 처리 모드 ---"
+        echo "--- Project $1 $2 ---"
         
         if [ "$1" = "3" ] && [ "$2" = "n" ]; then
             
@@ -154,8 +154,8 @@ case $# in
         ;;
 
     *) # 그 외의 모든 인자 개수 (오류 처리)
-        echo "오류: 지원하지 않는 인자 개수입니다. 인자는 없거나, 1개 또는 '3 n' 조합의 2개만 허용됩니다." >&2
-        echo "사용법: $0 <인자> 또는 $0 3 n"
+        echo "arguments error." >&2
+        echo "사용법: $0 <1,2,3,5 중 택1> 또는 $0 3 n"
         exit 1
         ;;
 esac

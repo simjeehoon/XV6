@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "procstat.h"
 
 struct {
   struct spinlock lock;
@@ -584,7 +585,7 @@ void do_get_pstat(int pid, struct proc_stat *proc_stat){
         if(p->pid == pid){
             // [os-prj3] 커널 데이터(p->...)를 사용자 구조체(*stats)로 복사
             proc_stat->pid = p->pid;
-            proc_stat->weight = 1  // [os-prj3] 의미없는 변수
+            proc_stat->weight = 1;  // [os-prj3] 의미없는 변수
             proc_stat->arrival_time = p->arrival_time;
             proc_stat->completion_time = p->completion_time;
             proc_stat->cpu_time = p->cpu_time;

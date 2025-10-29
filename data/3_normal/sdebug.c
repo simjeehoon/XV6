@@ -4,7 +4,7 @@
 #include "procstat.h"
 
 #define PNUM 20
-#define PRINT_CYCLE 100000000
+#define PRINT_CYCLE   100000000
 #define TOTAL_COUNTER 500000000
 
 char *scheduler_name = "normal_scheduler"
