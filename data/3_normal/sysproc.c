@@ -120,7 +120,7 @@ sys_get_pstats(void)
     if(argptr(1, (void*)&proc_stat, sizeof(struct proc_stat)) < 0)
         return -1;
 
-    do_get_pstat(pid, proc_stat)
+    do_get_pstat(pid, proc_stat);
     if(proc_stat->pid == -1){
       return -1; // [os-prj3] 프로세스를 찾지 못함
     }
