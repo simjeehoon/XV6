@@ -3,8 +3,8 @@
 #include "user.h"
 #include "procstat.h"
 
-#define PNUM 20
-#define PRINT_CYCLE   100000000
+#define PNUM 5
+#define PRINT_CYCLE   10000000
 #define TOTAL_COUNTER 500000000
 
 #define STDOUT_BUF_SIZE 1024
@@ -21,11 +21,10 @@ typedef struct process_data{
 Pdata pdata[PNUM];
 
 // [os-prj3] 종합 통계 변수
-uint total_waiting_time = 0;
-uint total_turnaround_time = 0;
-uint total_response_time = 0;
+uint avg_waiting_time = 0;
+uint avg_turnaround_time = 0;
+uint avg_response_time = 0;
 uint total_cpu_time = 0;
-uint success_count = 0;
 
 // [os-prj3] 총 시간 측정을 위한 변수
 int flag_min = 1;
@@ -167,16 +166,15 @@ void print_each_process(Pdata *pdata)
 
 void print_statistics()
 {
-    so_printf("%s Performance Analysis (number of process:%u)", scheduler_name, success_count);
-    so_printf("1. Avg. Turnaround Time: %u ticks\n", total_turnaround_time / success_count);
-    so_printf("2. Avg. Waiting Time: %u ticks\n", total_waiting_time / success_count);
-    so_printf("3. Avg. Response Time: %u ticks\n", total_response_time / success_count);
+    so_printf("%s Performance Analysis\n", scheduler_name);
+    so_printf("1. Avg. Turnaround Time: %u ticks\n", avg_turnaround_time);
+    so_printf("2. Avg. Waiting Time: %u ticks\n", avg_waiting_time);
+    so_printf("3. Avg. Response Time: %u ticks\n", avg_response_time);
     so_printf("4. Total CPU Time: %u ticks\n", total_cpu_time);
     
     // 전체 경과 시간 계산
     uint total_elapsed_time = max_completion_time - min_arrival_time;
     so_printf("5. Total Elapsed Time: %u ticks\n", total_elapsed_time);
-    so_printf("6. Throughput: %u개 / %u ticks \n", success_count, total_elapsed_time);
     so_flush();
 }
 
@@ -206,12 +204,12 @@ void sdebug_func(void)
             
             while(counter < PRINT_CYCLE)
               ++counter;
-            so_printf("[CK] PID: %d, TIMES: %d ms\n", getpid(), (uptime()-start)*10);
+            so_printf("[Check] PID: %d, TIMES: %d ms\n", getpid(), (uptime()-start)*10);
             so_flush();
 
             while(counter < TOTAL_COUNTER)
               ++counter;
-            so_printf("[TM] PID: %d, TIMES: %d ms\n", getpid(), (uptime()-start)*10);
+            so_printf("[Terminated] PID: %d, TIMES: %d ms\n", getpid(), (uptime()-start)*10);
 
             so_flush();
             exit();
@@ -250,11 +248,10 @@ void sdebug_func(void)
             }
 
             // 통계 누적
-            total_turnaround_time += turnaround;
-            total_waiting_time += waiting;
-            total_response_time += response;
+            avg_turnaround_time += turnaround / PNUM;
+            avg_waiting_time += waiting / PNUM;
+            avg_response_time += response / PNUM;
             total_cpu_time += proc_stat.cpu_time;
-            success_count++;
             
             // 값 저장
             pdata[i].pid = terminated_pid;
@@ -266,14 +263,12 @@ void sdebug_func(void)
     }
 
     // [os-prj3] 최종 평균 성능 지표 출력
-    if (success_count > 0) {
-        so_printf("Individual Process Result of %s\n", scheduler_name);
-        for(i=0 ; i < PNUM ; i++)
-            print_each_process(pdata+i);
-        so_printf("--------------------------------------------------------\n");
-        print_statistics();
-        so_printf("--------------------------------------------------------\n");
-    }
+    so_printf("Individual Process Result of %s\n", scheduler_name);
+    for(i=0 ; i < PNUM ; i++)
+        print_each_process(pdata+i);
+    so_printf("--------------------------------------------------------\n");
+    print_statistics();
+    so_printf("--------------------------------------------------------\n");
 
     so_printf("End of sdebug command - %s\n", scheduler_name);
     so_flush();
