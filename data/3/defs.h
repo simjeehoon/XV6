@@ -124,7 +124,7 @@ int             wait(void);
 void            wakeup(void*);
 void            yield(void);
 void			do_weightset(unsigned long w); // [os-prj3] for weightset system call
-void            waitx(struct proc_stat *proc_stat);  // [os-prj3] Wait that returns the status of a child process
+int             waitx(struct proc_stat *proc_stat);  // [os-prj3] Wait that returns the status of a child process
 
 // swtch.S
 void            swtch(struct context**, struct context*);
