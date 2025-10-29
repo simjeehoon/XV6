@@ -151,7 +151,7 @@ void sdebug_func(void)
 
         if(pid == 0){ // [os-prj3]  자식 프로세스
           // [os-prj3] 시작시간 측정
-          so_printf("[START] PID:%d, CUR_TIME:%d\n", 
+          so_printf("[Start] PID: %d, TIME:%d\n", 
             getpid(), uptime());
           so_flush();
           
@@ -165,7 +165,7 @@ void sdebug_func(void)
             ++counter;
 
           // [os-prj3] 체크시간 측정
-          so_printf("[CHECK] PID: %d, CUR_TIME:%d\n", 
+          so_printf("[Print] PID: %d, TIME:%d\n", 
             getpid(), uptime());
           so_flush();
 
@@ -173,7 +173,7 @@ void sdebug_func(void)
             ++counter;
           
           // [os-prj3] 종료시간 측정
-          so_printf("[Terminated] PID: %d, CUR_TIME:%d\n", 
+          so_printf("[Terminated] PID: %d, TIME:%d\n", 
             getpid(), uptime());
           so_flush();
 
