@@ -192,7 +192,7 @@ void sdebug_func(void)
     
     struct proc_stat proc_stat; // 프로세스 상태
 
-    so_printf(1, "Start sdebug command - %s\n", scheduler_name);
+    so_printf("Start sdebug command - %s\n", scheduler_name);
     so_flush();
     for(i = 0 ; i < PNUM ; i++){
         pid = fork();
@@ -243,7 +243,7 @@ void sdebug_func(void)
             // 총 시간 추적
             if (flag_min || proc_stat.arrival_time < min_arrival_time) {
                 min_arrival_time = proc_stat.arrival_time;
-                flag_min = 0
+                flag_min = 0;
             }
             if (proc_stat.completion_time > max_completion_time) {
                 max_completion_time = proc_stat.completion_time;
