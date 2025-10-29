@@ -626,6 +626,8 @@ void do_weightset(unsigned long w){
   프로세스의 상태를 반환하는 함수
  */
 void do_get_pstat(int pid, struct proc_stat *proc_stat){
+    struct proc *p;
+    
     // [os-prj3] 프로세스 테이블을 잠그고 (lock) 해당 pid의 프로세스를 찾음
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
