@@ -30,13 +30,12 @@ int max_completion_time = 0; // 가장 늦게 종료된 프로세스의 completi
 
 void print_each_process(Pdata *pdata)
 {
-    int i;
     // [os-prj3] 개별 프로세스의 상세 결과 출력
     printf(1, " PID:%d, WEIGHT:%d | AT:%d, CT:%d, CPUT:%d, FT:%d | TT:%d, WT:%d, RT:%d\n",
         pdata->pid, 
-        pdata->proc_stat->weight, 
-        pdata->proc_stat->arrival_time, pdata->proc_stat->completion_time, 
-        pdata->proc_stat->cpu_time, pdata->proc_stat->first_run_time,
+        pdata->proc_stat.weight, 
+        pdata->proc_stat.arrival_time, pdata->proc_stat.completion_time, 
+        pdata->proc_stat.cpu_time, pdata->proc_stat.first_run_time,
         pdata->tt, pdata->wt, pdata->rt
     );      
 }
