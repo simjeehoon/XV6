@@ -186,6 +186,12 @@ void sdebug_func(void)
           break;
         }
     }
+    for(i = 0 ; i < PNUM ; i++) {
+      terminated_pid = wait(); // 자식이 종료될 때까지 대기하고 PID를 받음
+      if(terminated_pid < 0){
+        so_printf("wait error");
+      }
+    }
 }
 
 
