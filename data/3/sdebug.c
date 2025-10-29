@@ -259,7 +259,7 @@ void sdebug_func(void)
                 max_completion_time = proc_stat.completion_time;
             }
 
-            / 통계 누적
+            // 통계 누적
             avg_turnaround_time += turnaround / PNUM;
             avg_waiting_time += waiting / PNUM;
             avg_response_time += response / PNUM;
