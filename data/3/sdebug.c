@@ -7,58 +7,179 @@
 #define PRINT_CYCLE   100000000
 #define TOTAL_COUNTER 500000000
 
+#define STDOUT_BUF_SIZE 1024
+#define STDOUT 1
+
 char *scheduler_name = "SSU scheduler";
 
 typedef struct process_data{
     int pid;
     struct proc_stat proc_stat;
-    int tt, wt, rt;
+    uint tt, wt, rt;
 } Pdata;
 
 Pdata pdata[PNUM];
 
 // [os-prj3] 종합 통계 변수
-int total_waiting_time = 0;
-int total_turnaround_time = 0;
-int total_response_time = 0;
-int total_cpu_time = 0;
-int success_count = 0;
+uint total_waiting_time = 0;
+uint total_turnaround_time = 0;
+uint total_response_time = 0;
+uint total_cpu_time = 0;
+uint success_count = 0;
 
 // [os-prj3] 총 시간 측정을 위한 변수
-int min_arrival_time = -1; // 가장 먼저 시작한 프로세스의 arrival_time
-int max_completion_time = 0; // 가장 늦게 종료된 프로세스의 completion_time
+int flag_min = 1;
+uint min_arrival_time = 0; // 가장 먼저 시작한 프로세스의 arrival_time
+uint max_completion_time = 0; // 가장 늦게 종료된 프로세스의 completion_time
 
+// [os-prj3] console에 여러 프로세스의 문자가 뒤섞여서 출력되는것을 막고자
+// 자체 출력 함수를 개발했습니다.
+
+static char stdout_buf[STDOUT_BUF_SIZE];
+static int stdout_i = 0;
+
+// [os-prj3] 비로소 console에 출력해주는 함수. 프로그램 종료 전 반드시 호출되어야 함.
+static void 
+so_flush(){
+    write(STDOUT, stdout_buf, sizeof(char) * stdout_i);
+    stdout_i = 0;
+}
+
+// [os-prj3] 글자 1개를 STDOUT 버퍼에 넘기는 함수
+static void
+so_putc(char c)
+{
+    if(stdout_i >= STDOUT_BUF_SIZE){ // [os-prj3] 출력버퍼 비우기
+        so_flush();
+    }
+    stdout_buf[stdout_i++] = c;
+}
+
+static void
+so_printint(int xx, int base, int sgn)
+{
+  static char digits[] = "0123456789ABCDEF";
+  char buf[16];
+  int i, neg;
+  uint x;
+
+  neg = 0;
+  if(sgn && xx < 0){
+    neg = 1;
+    x = -xx;
+  } else {
+    x = xx;
+  }
+
+  i = 0;
+  do{
+    buf[i++] = digits[x % base];
+  }while((x /= base) != 0);
+  if(neg)
+    buf[i++] = '-';
+
+  while(--i >= 0)
+    so_putc(buf[i]);
+}
+
+/*
+   [os-prj3] function to print unsigned long integer in cernel
+   */
+static void
+so_printuint(uint x, uint base)
+{
+  static char digits[] = "0123456789ABCDEF";
+  char buf[48];
+  int i = 0;
+  do{
+    buf[i++] = digits[x % base];
+  }while((x /= base) != 0);
+
+  while(--i >= 0)
+    so_putc(buf[i]);
+}
+
+// Print to the given fd. Only understands %d, %x, %p, %s.
+void
+so_printf(const char *fmt, ...)
+{
+  char *s;
+  int c, i, state;
+  uint *ap;
+
+  state = 0;
+  ap = (uint*)(void*)&fmt + 1;
+  for(i = 0; fmt[i]; i++){
+    c = fmt[i] & 0xff;
+    if(state == 0){
+      if(c == '%'){
+        state = '%';
+      } else {
+        so_putc(c);
+      }
+    } else if(state == '%'){
+      if(c == 'd'){
+        so_printint(*ap, 10, 1);
+        ap++;
+      } else if(c == 'u'){
+        so_printuint(*ap, 10u);
+        ap++;
+      } else if(c == 'x' || c == 'p'){
+        so_printint(*ap, 16, 0);
+        ap++;
+      } else if(c == 's'){
+        s = (char*)*ap;
+        ap++;
+        if(s == 0)
+          s = "(null)";
+        while(*s != 0){
+          so_putc(*s);
+          s++;
+        }
+      } else if(c == 'c'){
+        so_putc(*ap);
+        ap++;
+      } else if(c == '%'){
+        so_putc(c);
+      } else {
+        // Unknown % sequence.  Print it to draw attention.
+        so_putc('%');
+        so_putc(c);
+      }
+      state = 0;
+    }
+  }
+}
+
+
+
+// [os-prj3] 프로세스 출력 함수
 void print_each_process(Pdata *pdata)
 {
     // [os-prj3] 개별 프로세스의 상세 결과 출력
-    printf(1, " PID:%d, WEIGHT:%d | AT:%d, CT:%d, CPUT:%d, FT:%d | TT:%d, WT:%d, RT:%d\n",
+    so_printf(" PID:%d, WEIGHT:%d | AT:%u, CT:%u, CPUT:%u, FT:%u | TT:%u, WT:%u, RT:%u\n",
         pdata->pid, 
         pdata->proc_stat.weight, 
         pdata->proc_stat.arrival_time, pdata->proc_stat.completion_time, 
         pdata->proc_stat.cpu_time, pdata->proc_stat.first_run_time,
         pdata->tt, pdata->wt, pdata->rt
-    );      
+    );
+    so_flush();
 }
 
 void print_statistics()
 {
-    printf(1, "%s Performance Analysis (number of process:%d)", scheduler_name, success_count);
-    printf(1, "1. Avg. Turnaround Time: %d ticks (%d ms)\n", 
-            total_turnaround_time / success_count, 
-            (total_turnaround_time * 10 / success_count)); // *10은 ms 단위 환산 가정
-    printf(1, "2. Avg. Waiting Time: %d ticks (%d ms)\n", 
-            total_waiting_time / success_count, 
-            (total_waiting_time * 10 / success_count));
-    printf(1, "3. Avg. Response Time: %d ticks (%d ms)\n", 
-            total_response_time / success_count, 
-            (total_response_time * 10 / success_count));
-    printf(1, "4. Total CPU Time: %d ticks\n", total_cpu_time);
+    so_printf("%s Performance Analysis (number of process:%u)", scheduler_name, success_count);
+    so_printf("1. Avg. Turnaround Time: %u ticks\n", total_turnaround_time / success_count);
+    so_printf("2. Avg. Waiting Time: %u ticks\n", total_waiting_time / success_count);
+    so_printf("3. Avg. Response Time: %u ticks\n", total_response_time / success_count);
+    so_printf("4. Total CPU Time: %u ticks\n", total_cpu_time);
     
     // 전체 경과 시간 계산
-    int total_elapsed_time = max_completion_time - min_arrival_time;
-    printf(1, "5. Total Elapsed Time: %d ticks\n", total_elapsed_time);
-    printf(1, "6. Throughput: %d개 / %d ticks \n", 
-            success_count, total_elapsed_time);
+    uint total_elapsed_time = max_completion_time - min_arrival_time;
+    so_printf("5. Total Elapsed Time: %u ticks\n", total_elapsed_time);
+    so_printf("6. Throughput: %u개 / %u ticks \n", success_count, total_elapsed_time);
+    so_flush();
 }
 
 void sdebug_func(void)
@@ -75,7 +196,8 @@ void sdebug_func(void)
 
     int weight;
 
-    printf(1, "Start sdebug command - %s\n", scheduler_name);
+    so_printf(1, "Start sdebug command - %s\n", scheduler_name);
+    so_flush();
     for(i = 0 ; i < PNUM ; i++){
         pid = fork();
         start = uptime(); 
@@ -84,7 +206,8 @@ void sdebug_func(void)
 
             // [os-prj3] Set weight to i
 			if(weightset(weight) < 0){
-				printf(1, "PID:%d, weightset error\n", getpid());	
+				so_printf("PID:%d, weightset error\n", getpid());
+                so_flush();	
 				exit();
 			} 
 			
@@ -95,18 +218,20 @@ void sdebug_func(void)
             
             while(counter < PRINT_CYCLE)
               ++counter;
-            printf(1, "[CK] PID: %d, WEIGHT: %d, TIMES: %d ms\n", getpid(), weight, (uptime()-start)*10);
-      
+            so_printf("[CK] PID: %d, WEIGHT: %d, TIMES: %d ms\n", getpid(), weight, (uptime()-start)*10);
+            so_flush();
+
             while(counter < TOTAL_COUNTER)
               ++counter;
-            printf(1, "[TM] PID: %d, WEIGHT: %d, TIMES: %d ms\n", getpid(), weight, (uptime()-start)*10);
+            so_printf("[TM] PID: %d, WEIGHT: %d, TIMES: %d ms\n", getpid(), weight, (uptime()-start)*10);
 
+            so_flush();
             exit();
         }
         else if(pid > 0) // [os-prj3]  부모 프로세스
           continue;
         else{
-          printf(1, "ERROR: fork\n");
+          so_printf("ERROR: fork\n");
           break;
         }
     }
@@ -114,7 +239,7 @@ void sdebug_func(void)
     
     // [os-prj3] 부모 프로세스의 통계 수집 및 계산
 
-    int turnaround, waiting, response; // 시간 변수
+    uint turnaround, waiting, response; // 시간 변수
 
     for(i = 0 ; i < PNUM ; i++) {
         terminated_pid = waitx(&proc_stat); // 자식이 종료될때까지 대기하고 proc_stat을 받음
@@ -128,8 +253,9 @@ void sdebug_func(void)
             response = proc_stat.first_run_time - proc_stat.arrival_time;
 
             // 총 시간 추적
-            if (min_arrival_time == -1 || proc_stat.arrival_time < min_arrival_time) {
+            if (flag_min || proc_stat.arrival_time < min_arrival_time) {
                 min_arrival_time = proc_stat.arrival_time;
+                flag_min = 0
             }
             if (proc_stat.completion_time > max_completion_time) {
                 max_completion_time = proc_stat.completion_time;
@@ -153,20 +279,22 @@ void sdebug_func(void)
 
     // [os-prj3] 최종 평균 성능 지표 출력
     if (success_count > 0) {
-        printf(1, "Individual Process Result of %s\n", scheduler_name);
+        so_printf("Individual Process Result of %s\n", scheduler_name);
         for(i=0 ; i < PNUM ; i++)
             print_each_process(pdata+i);
-        printf(1, "--------------------------------------------------------\n");
+        so_printf("--------------------------------------------------------\n");
         print_statistics();
-        printf(1, "--------------------------------------------------------\n");
+        so_printf("--------------------------------------------------------\n");
     }
 
-    printf(1, "End of sdebug command - %s\n", scheduler_name);
+    so_printf("End of sdebug command - %s\n", scheduler_name);
+    so_flush();
 }
 
 
 int main(void)
 {
   sdebug_func();
+  so_flush();
   exit();
 }
