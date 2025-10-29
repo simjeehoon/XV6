@@ -56,9 +56,8 @@ trap(struct trapframe *tf)
     }
     lapiceoi();
 
-    // ==========================================================
+    
     // [os-prj3] CPU Time 기록
-    // ==========================================================
     if(myproc() && myproc()->state == RUNNING) {
         myproc()->cpu_time++; // 현재 RUNNING 상태인 프로세스의 CPU 사용 시간 1 증가
     }

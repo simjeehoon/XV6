@@ -25,7 +25,7 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 int weightset(int weight); // [os-prj3] weight set sys call
-int get_proc_stats(int pid, struct proc_stat *stats); // [os-prj3] 프로세스 상태 가져오기
+int get_pstats(int pid, struct proc_stat *stats); // [os-prj3] 프로세스 상태 가져오기
 
 // ulib.c
 int stat(const char*, struct stat*);

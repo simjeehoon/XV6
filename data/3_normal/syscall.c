@@ -105,7 +105,7 @@ extern int sys_write(void);
 extern int sys_uptime(void);
 // [os-prj3]
 extern int sys_weightset(void); 
-extern int sys_get_proc_stats(void); 
+extern int sys_get_pstats(void); 
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -130,7 +130,7 @@ static int (*syscalls[])(void) = {
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
 [SYS_weightset]   sys_weightset, // [os-prj3]
-[SYS_get_proc_stats]  sys_get_proc_stats, // [os-prj3]
+[SYS_get_pstats]  sys_get_pstats,  // [os-prj3]
 };
 
 void

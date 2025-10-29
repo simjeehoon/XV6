@@ -11,4 +11,4 @@ struct proc_stat {
     int first_run_time;
 };
 
-#endif // _PROCSTAT_H_
+#endif 

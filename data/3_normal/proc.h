@@ -50,7 +50,7 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
 
-  // [os-prj3] 성능측정을 위한 변수들
+  // [os-prj3] 프로세스 통계를 위해 성능을 측정하는 변수.
   int arrival_time;         // 1. 프로세스가 생성된 시점의 ticks
   int completion_time;      // 2. 프로세스가 종료된 시점의 ticks
   int cpu_time;             // 3. 프로세스가 CPU를 사용한 누적 ticks 수
@@ -62,11 +62,3 @@ struct proc {
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
-
-// ==========================================================
-// [os-prj3] ptable 외부 선언 추가
-// ==========================================================
-extern struct {
-  struct spinlock lock;
-  struct proc proc[NPROC];
-} ptable;

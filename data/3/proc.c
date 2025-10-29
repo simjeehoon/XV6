@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "procstat.h"
 
 struct {
   struct spinlock lock;
@@ -618,4 +619,30 @@ void do_weightset(unsigned long w){
   struct proc *p = myproc(); 
   p->weight = w;
   release(&ptable.lock);
+}
+
+/**
+ [os-prj3]
+  프로세스의 상태를 반환하는 함수
+ */
+void do_get_pstat(int pid, struct proc_stat *proc_stat){
+    // [os-prj3] 프로세스 테이블을 잠그고 (lock) 해당 pid의 프로세스를 찾음
+    acquire(&ptable.lock);
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->pid == pid){
+            // [os-prj3] 커널 데이터(p->...)를 사용자 구조체(*stats)로 복사
+            proc_stat->pid = p->pid;
+            proc_stat->weight = p->weight;
+            proc_stat->arrival_time = p->arrival_time;
+            proc_stat->completion_time = p->completion_time;
+            proc_stat->cpu_time = p->cpu_time;
+            proc_stat->first_run_time = p->first_run_time;
+
+            release(&ptable.lock);
+            return; // [os-prj3] 성공
+        }
+    }
+
+    proc_stat->pid = -1; // [os-prj3] 실패를 의미.
+    release(&ptable.lock); // [os-prj3] 실패
 }

@@ -123,7 +123,7 @@ int             wait(void);
 void            wakeup(void*);
 void            yield(void);
 void			do_weightset(unsigned long w); // [os-prj3] for weightset system call
-
+void            do_get_pstat(int pid, struct proc_stat *proc_stat)  // [os-prj3] 프로세스 통계를 위한 함수
 
 // swtch.S
 void            swtch(struct context**, struct context*);
