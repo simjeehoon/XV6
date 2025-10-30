@@ -2,4 +2,5 @@
 #define O_WRONLY  0x001
 #define O_RDWR    0x002
 #define O_CREATE  0x200
+// [os-prj5]
 #define O_CS 0x020
