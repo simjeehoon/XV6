@@ -256,16 +256,17 @@ XV6의 스케줄링, 파일시스템 개선하기
 ### 기대 효과
  - 기존 scheduler는 FIFO 방식의 스케줄러를 사용합니다. 만일 앞에 시간이 오래 걸리는 프로세스가 점유하게 되면 이후 프로세스들의 처리가 늦어집니다.
  - `SSU Sheduler`는 프로세스의 시간이 길어질수록 `priority`가 증가하여, 스케줄링 순위에서 낮아집니다. 이렇게되면 이후 프로세스들의 처리가 원활해집니다.
- - 시스템 오버헤드가 약간 발생하더라도, 동일 시간 단위에 더 많은 프로세스를 수행하는 것이 목표입니다.
+ - 시스템 오버헤드가 약간 발생하더라도, 동일 시간 단위에 더 많은 프로세스를 수행하게 됩니다.
 
- - 개선된 스케줄링 함수의 동작 과정을 확인하기 위해 `sdebug` 명령어와 이를 위한 `weightset` 시스템콜도 추가합니다.
- - `[os-prj3]` 주석을 달아 수정된 부분을 보기 쉽게 하였습니다.
+---
+
+ > - 개선된 스케줄링 함수의 성능을 확인하기 위해 `sdebug` 명령어와 이를 위한 `weightset` 시스템콜도 추가합니다.
+ > - `[os-prj3]` 주석을 달아 수정된 부분을 보기 쉽게 하였습니다.
 
 ## (1) SSU Scheduler의 scheduling 알고리즘으로 수정하기
 
  XV6에서 프로세스는 proc 구조체에 의해 관리됩니다.
 
----
 
 ### proc.h 의 **`struct proc`**
 
@@ -283,7 +284,7 @@ struct proc {
   unsigned long weight;				   // [os-prj3] weight variable for scheduling
 };
 ```
-> 가중치(`weight`)와 우선순위(`priority`)를 `proc` 구조체에 추가했습니다.
+  가중치(`weight`)와 우선순위(`priority`)를 `proc` 구조체에 추가했습니다.
 
 
 ### `proc.c` 의 **`ptable`**
@@ -295,7 +296,7 @@ struct {
   unsigned long minpriority;			// [os-prj3] min priority for new process
 } ptable;
 ```
-> 프로세스를 생성하거나 `wake up`할때 `proc` 구조체의 `priority`에 할당할 가장 작은 값은 `ptable`의 `minpriority`으로부터 얻습니다.
+  프로세스를 생성하거나 `wake up`할때 `proc` 구조체의 `priority`에 할당할 가장 작은 값은 `ptable`의 `minpriority`으로부터 얻습니다.
 
 
  * `proc` 은 프로세스의 정보들이 담기는 구조체입니다.
@@ -303,7 +304,7 @@ struct {
  * 이 `ptable`은 공유 자원이므로 `acquire(&ptable.lock)` 및 `require(&ptable.lock)`을 이용해 접근을 제한해야 합니다.
 
 ---
-`proc.c`의 전역변수 `nextweight`
+### `proc.c`의 전역변수 `nextweight`
 
 ```c 
 int nextpid = 1;
@@ -521,10 +522,7 @@ scheduler(void)
 void
 scheduler(void)
 {
-  struct proc *p;
-  struct cpu *c = mycpu();
-  c->proc = 0;
-
+  //... 생략
   struct proc *selected; // [os-prj3] proc variable for SSU Scheduler
   unsigned long minpriority;  // [os-prj3] min priority variable for SSU Scheduler
   int updated; // [os-prj3] If ptable.minpriority is updated, this will be set 1.
@@ -555,18 +553,8 @@ scheduler(void)
 	if(selected != (void*)0){ // [os-prj3] If process is selected
 
 		/**
-		  [os-prj3] If it's debug mode, print process id, name, weight, priority.
-		  */
-#ifdef DEBUG
-		cprintf("PID: %d, NAME: %s, WEIGHT: %d, PRIORITY: ",
-				selected->pid, selected->name, selected->weight);
-		printul(selected->priority);
-		cprintf("\n");
-#endif
-
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
+		 ** [os-prj3] If it's debug mode, print process id, name, weight, priority.
+		 **/
       c->proc = selected; // [os-prj3] Set selected process.
       switchuvm(selected); // [os-prj3] Switch to selected process.
       selected->state = RUNNING; // [os-prj3] Set state to RUNNING.
@@ -603,9 +591,9 @@ scheduler(void)
   }
 }
 ```
- > - 만일 `selected`에 프로세스가 배정되었다면, 사전 작업을 수행하고 해당 프로세스에 제어권을 전달합니다. **(콘텍스트 스위칭)**
- > - 다시 `scheduler()`로 돌아오면, `priority = old_priority + (time_slice / weight)` 및 `(time_slice = 10,000,000 ns)`를 수행합니다.
- > - 마지막으로, 최소 `priority`를 검색하고 `ptable.minpriority`값을 갱신합니다.
+ - 만일 `selected`에 프로세스가 배정되었다면, 사전 작업을 수행하고 해당 프로세스에 제어권을 전달합니다. **(콘텍스트 스위칭)**
+ - 다시 `scheduler()`로 돌아오면, `priority = old_priority + (time_slice / weight)` 및 `(time_slice = 10,000,000 ns)`를 수행합니다.
+ - 마지막으로, 최소 `priority`를 검색하고 `ptable.minpriority`값을 갱신합니다.
 
 --- 
 
@@ -616,21 +604,60 @@ CPUS := 1
 endif
  ```
 
- > `Makefile`에서 `CPUS`를 `1`로 설정했습니다. 스케줄러의 성능 확인을 위함입니다.
+ `Makefile`에서 `CPUS`를 `1`로 설정했습니다. 스케줄러의 성능 확인을 위함입니다.
 
 ---
 
-## (2) 스케줄링 과정 확인을 위해 `sdebug` 명령어를 추가하기
+## (2) 스케줄러 성능 계산
+ SSU Scheduler와 기존 스케줄러(FIFO)와 성능을 비교해보겠습니다.
+ 
+ 비교를 위해 `sdebug.c`를 작성하였습니다.
 
-> ![sdebug_flowchart](https://github.com/simjeehoon/src_repository/blob/master/xv6-public/os-prj3/image02.png?raw=true)
->
-> * `sdebug`의 flow chart는 위와 같습니다.
-> * 반복문을 이용하여 `PNUM`만큼 프로세스를 만듭니다.
-> * 생성된 자식 프로세스는 `weightset` 시스템콜로 프로세스의 가중치를 임의로 설정합니다. 
-> * 이후 반복적으로 `counter` 변수를 증가시킵니다. 변수를 `PRINT_CYCLE`만큼 증가시켰다면, 프로세스의 ID, 가중치, 출력까지 소요된 시간을 출력합니다. 
-> * 최종적으로 `TOTAL_COUNTER`만큼 증가시켰다면, 해당 프로세스는 종료됩니다. 
-> * 부모 프로세스는 자식을 모두 생성했다면, `wait` 시스템콜을 이용하여 자식이 모두 종료될 때까지 기다립니다.
-> * 인자로 들어온 `weight`값으로 프로세스의 가중치를 결정하는 `weightset` 시스템콜을 구현하기 위해 `proc.c`에 `do_weightset` 함수를 만들었습니다. 구현부는 아래와 같습니다.
+### `sdebug`의 슈도 코드
+
+  ```c
+  for(i = 1 ; i <= 프로세스_개수 ; i++){
+      pid = fork(); // 자식 프로세스 생성
+
+      if(pid == 0){ // 자식 프로세스
+        // 시작시간 측정. uptime() 이용.
+        printf("[Start] PID: {getpid()}, TIME:{uptime()}\n");
+        
+        // SSU Scheduler만 해당.
+        // 가중치 설정
+        weightset(i);
+          
+        // 중간 계산   (10,000,000번 계산)
+        while(counter < PRINT_CYCLE)
+          ++counter;
+
+        // 체크시간 측정
+        printf("[Print] PID: {getpid()}, TIME:{uptime()}\n");
+
+        // 마무리 계산 (500,000,000번 계산)
+        while(counter < TOTAL_COUNTER)
+          ++counter;
+        
+        // [os-prj3] 종료시간 측정
+        printf("[Terminated] PID: {getpid()}, TIME:{uptime()}\n");
+
+        exit();
+      }
+      else if(pid > 0) // 부모 프로세스
+        continue;
+      else{
+        // 에러처리
+        break;
+      }
+  }
+  for(i = 0 ; i < PNUM ; i++) {
+      terminated_pid = wait(); // 자식이 종료될 때까지 대기하고 PID를 받음
+  }
+  ```
+
+`uptime()` 시스템콜로 총 3번의 시간 계산을 진행합니다.
+
+ 프로세스의 가중치를 결정하는 `weightset` 시스템콜을 구현하기 위해 `proc.c`에 `do_weightset` 함수를 만들었습니다. 구현부는 아래와 같습니다.
 
 ### `proc.c`에 추가한 **`do_weightset`**의 구현부
 ```c
@@ -654,8 +681,7 @@ void	do_weightset(unsigned long w); // [os-prj3] for weightset system call
 ```
 
 > - `do_weightset`은 `ptable`을 잠그고 해당 프로세스의 가중치를 인자값으로 할당합니다.
-> - `sysproc.c`의 `sys_weightset`에서 이를 사용하기 때문에 `defs.h`에 선언도 추가하였습니다.
-> - `sysproc.c`에서는 다음과 같이 `do_weightset`으로 `weight`을 설정합니다. `weight`이 0 이하이면 –1을 리턴하며 작업을 중지합니다.
+> - `sysproc.c`의 `sys_weightset`에서 `do_weightset`를 사용합니다. XV6는 이런식으로 캡슐화가 적용되도록 설계되어있습니다.
 
 `sysproc.c`의 **`sys_weightset`**의 구현부
 
@@ -720,90 +746,46 @@ EXTRA=\
 UPROGS=\
 	_cat\
 	_echo\
-	_forktest\
-	_grep\
-	_init\
-	_kill\
-	_ln\
-	_ls\
-	_mkdir\
-	_rm\
-	_sh\
-	_stressfs\
-	_usertests\
+	# ...
 	_wc\
 	_zombie\
 	_sdebug\ # <--- this
 ```
 
-### `sdebug.c`
-```c
-#include "types.h"
-#include "stat.h"
-#include "user.h"
+### 성능 계산
 
-#define PNUM 5
-#define PRINT_CYCLE 10000000
-#define TOTAL_COUNTER 500000000
+- `./setup 3 n`을 입력하면 XV6 기본 스케줄링 파일이 설정됩니다.
+- `./setup 3`을 입력하면 SSU Scheduler로 설정됩니다.
+- 두 버전에서 각각 sdebug를 입력하여 다음과 같은 값을 계산합니다.
+  
 
-void sdebug_func(void)
-{
-  int i;
-  int pid;
-  long start;
-  volatile long counter = 0;
-
-  printf(1, "start sdebug command\n");
-  for(i = 1 ; i <= PNUM ; i++){
-	pid = fork();
-	start = uptime(); // [os-prj3] Check start time
-	if(pid == 0){ // [os-prj3] Child process
-	  if(weightset(i) < 0){
-		printf(1, "PID:%d, weightset error\n", getpid());	
-		exit();
-	  } // [os-prj3] Set weight to i
-	  /*
-		 [os-prj3] Count PRINT_CYCLE
-		 and print this process information.
-	  */
-	  while(counter < PRINT_CYCLE)
-		++counter;
-	  printf(1, "PID: %d, WEIGHT: %d, TIMES: %d ms\n", getpid(), i, (uptime()-start)*10);
-
-	  /*
-		 [os-prj3] Count TOTAL_COUNTER
-		 and exit this process.
-	  */
-	  while(counter < TOTAL_COUNTER)
-		++counter;
-	  printf(1, "PID: %d terminated\n", getpid());
-	  exit();
-	}
-	else if(pid > 0) // [os-prj3] Parent process
-	  continue; // [os-prj3] Loop for making child process.
-	else{ // Error
-	  printf(1, "ERROR: fork\n");
-	  break;
-	}
-  }
-  for(i = 1 ; i <= PNUM ; i++) // [os-prj3] Wait childs.
-	wait();
-
-  printf(1, "end of sdebug command\n");
-}
-
-int main(void)
-{
-  sdebug_func();
-  exit();
-}
-
-```
- > flow chart와 같이 자식 프로세스를 생성하여 `weightset`으로 `weight`을 지정하고, 프로세스 정보를 출력한 뒤 종료하는 코드를 `sdebug.c`에 작성했습니다. 
+|계산값|공식|비고|
+|---|---|---|
+|**반환 시간 (Turnaround Time, TT)**|`[Terminated] TIME - [Start] TIME`|(시스템에 머문 총 시간)|
+|**실행 시간 (Exec Time)**|`[Terminated] TIME - [Print] TIME`|(최초 실행 후 종료까지의 총 시간)|
+|**대기 시간 (Waiting Time, WT)**|`Turnaround Time - Exec Time`|(CPU 할당을 기다린 순수 대기 시간)|
 
 ---
 
-## (3) 다음에 실행될 프로세스 선정 과정 디버깅 기능 구현
+각 프로세스별로 값을 계산하여 평균을 내었습니다.
+
+|지표 (평균)|일반 스케줄러 (FIFO)|SSU Scheduler|비고|
+|---|---|---|---|
+|**반환 시간 (TT)**|1834.7 ticks|1319.1 ticks|↓28.1% 개선됨.|
+|**실행 시간 (Exec Time)**|1790.2 ticks|1275.1 ticks|↓28.7% 개선됨.|
+|**대기 시간 (WT)**|34.5 ticks|44.0 ticks|↑27.5%, 가중치에 따른 불공정성이 커져, 특정 프로세스들이 장시간 실행됨|
+
+- **FIFO** 방식에 비해, 모든 프로세스에게 CPU 자원이 고루 분배되어 반환시간이 개선되었습니다.
+- **SSU 스케줄링**은 프로세스 점유 시간이 길어질수록, 자원의 우선권이 낮아집니다. 
+- 이러한 특징은 다른 프로세스들이 자원을 더 차지하게 하여 `TT`와 `Exec Time`을 낮출 수 있었습니다.
+- 다만 점유시간이 길어지는 프로세스는 대기시간이 많이 길어지게 되어 `WT`값이 상승했습니다.
+
+계산에 사용된 데이터는 `data/3_result`에 있습니다. 각각 `normal.txt`, `ssu_scheduler.txt`로 저장되어있습니다. 
+
+`ssu_scheduler_weight_reverse.txt`는 `weightset()`으로 `weight`를 점점 낮추는 방식으로 적용하였을 때 결과입니다. 여기서는 더 낮은 `TT`, `Exec Time`을 얻을 수 있으나, `WT`가 더 길어집니다.
+
+
+## (3) SSU Scheduler의 선정 과정 디버깅 구현
 
  `make`에서 `debug=1` 옵션을 주면 프로세스 선정 과정을 확인할 수 있는 화면이 나오도록 구현하겠습니다.
 
@@ -842,9 +824,8 @@ printul(unsigned long x)
 void	printul(unsigned long); // [os-prj3] for debug option
 ```
 
- > - `priority`를 부호 있는 integer 형식으로 출력하게 되면 오버플로우가 발생한 상태로 출력될 수 있습니다. 
- > - 이를 방지하기 위해 `unsigned long`을 출력할 수 있는 `printul` 함수를 `console.c`에 구현했습니다.
- > - 이후 `defs.h`에 함수의 선언을 작성했습니다.
+ - `priority`의 오버플로우를 방지하기 위해 `unsigned long`을 출력할 수 있는 `printul` 함수를 `console.c`에 구현했습니다.
+ - 이후 `defs.h`에 함수의 선언을 작성했습니다.
 
 ### `proc.c`에 있는 `scheduler`에서 프로세스가 선택되었을 때 프로세스 정보를 출력
 ```c
@@ -861,25 +842,9 @@ if(selected != (void*)0){ // [os-prj3] If process is selected
 #endif
 ```
 
- > - `proc.c`의 `scheduler`에서 프로세스가 선택되었을 때 해당 프로세스 정보를 출력하고, `PRIORITY`는 `printul`을 이용하여 출력합니다.
-
-## (4) 최종 실행 결과
-
-### `sdebug` 명령
-
-> - ![sdebug](https://github.com/simjeehoon/src_repository/blob/master/xv6-public/os-prj3/image002c.png?raw=true)
->
-> - `sdebug` 명령이 잘 출력됩니다.
-
 ### `debug=1` 옵션 컴파일
 > - ![debug1_1](https://github.com/simjeehoon/src_repository/blob/master/xv6-public/os-prj3/image03.png?raw=true)
 > - ![debug1_2](https://github.com/simjeehoon/src_repository/blob/master/xv6-public/os-prj3/image002d.png?raw=true)
->
-> - 잘 출력됩니다.
-
-> - ![after_sdebug](https://github.com/simjeehoon/src_repository/blob/master/xv6-public/os-prj3/image04.png?raw=true)
->
-> - `sdebug` 명령 수행 후에도 `priority`가 오버플로없이 잘 출력됩니다.
 
 ---
 # 4. 메모리 개선
@@ -888,18 +853,15 @@ if(selected != (void*)0){ // [os-prj3] If process is selected
 
 ---
 # 5. **XV6**의 더 효율적인 **파일 시스템**을 적용
- - XV6의 기존 파일 시스템에 새로운 파일 시스템을 추가합니다.
+ - XV6의 기존 파일 시스템의 한계를 극복하며, 디스크 탐색 시간을 단축시키는 파일시스템을 만들겠습니다.
  - `./setup.sh 5`을 입력하시고 진행해주세요.
-
-> ## CS 파일 시스템
-> - 새로운 파일 시스템의 이름을 `CS 파일 시스템`이라고 명명하였습니다.
+ 
+> ## CS (Continuous Sector) 파일 시스템
 > - 파일에 연속적인 데이터 블록을 할당함으로써, 파일의 최대 크기를 늘리고 디스크 탐색시간을 단축하는 파일 시스템입니다.
 > - XV6의 기존 파일 시스템은 그대로 유지하면서 CS 파일 시스템을 추가합니다.
 > - `CS 파일 시스템`을 이용할 때, inode 구조체에 있는 direct block의 할당 방식을 수정할 것입니다.
 
  - `[os-prj5]` 주석을 달아 수정된 부분을 보기 쉽게 하였습니다.
-
-
 
 ## (1) 파일 생성 과정
 
@@ -934,7 +896,7 @@ struct stat {
 };
 ```
 
-> `fcntl.h`에 `O_CS` 플래그를, `stat.h`에 `T_CS` 매크로를 추가하였습니다.
+ `fcntl.h`에 `O_CS` 플래그를, `stat.h`에 `T_CS` 매크로를 추가하였습니다.
 
 ### sysfile.c
 
@@ -951,7 +913,7 @@ struct stat {
 	}
 ```
 
-> `sysfile.c`에서 `O_CS` 플래그가 존재하면 `create`에 `type`으로 `T_CS`를 넘깁니다.
+ `sysfile.c`에서 `O_CS` 플래그가 존재하면 `create`에 `type`으로 `T_CS`를 넘깁니다.
 
 
 ### `sysfile.c`의 `create`
@@ -982,9 +944,9 @@ create(char *path, short type, short major, short minor)
     panic("create: ialloc");
 ```
 
-> - `sysfile.c`에서 `T_CS`일 때 `T_FILE`과 같은 방식으로 처리했습니다.
-> - `ialloc`에 `T_CS` 정보가 넘어가면, `type`이 `T_CS`인 `inode` 구조체가 생성됩니다.
-> - `ialloc`의 내용은 `fs.c`에 있습니다.
+ - `sysfile.c`에서 `T_CS`일 때 `T_FILE`과 같은 방식으로 처리했습니다.
+ - `ialloc`에 `T_CS` 정보가 넘어가면, `type`이 `T_CS`인 `inode` 구조체가 생성됩니다.
+ - `ialloc`의 내용은 `fs.c`에 있습니다.
 
 ### `sysfile.c` 의 `sys_open` 중 일부
 ```c
@@ -1079,32 +1041,32 @@ writei(struct inode *ip, char *src, uint off, uint n)
 
   // [os-prj5] writei for cs
   if(ip->type == T_CS){
-	for(tot=0; tot<n; tot+=m, off+=m, src+=m){
-	  bp = bread(ip->dev, bcsmap(ip, off, n-tot)); //<--this
-	  m = min(n - tot, BSIZE - off%BSIZE);
-	  memmove(bp->data + off%BSIZE, src, m);
-	  log_write(bp);
-	  brelse(bp);
-	}
+    for(tot=0; tot<n; tot+=m, off+=m, src+=m){
+      bp = bread(ip->dev, bcsmap(ip, off, n-tot)); //<--this
+      m = min(n - tot, BSIZE - off%BSIZE);
+      memmove(bp->data + off%BSIZE, src, m);
+      log_write(bp);
+      brelse(bp);
+    }
   }
   else {
-	if(off + n > MAXFILE*BSIZE)
-	  return -1;
+    if(off + n > MAXFILE*BSIZE)
+      return -1;
 
-	for(tot=0; tot<n; tot+=m, off+=m, src+=m){
-	  bp = bread(ip->dev, bmap(ip, off/BSIZE)); //<--this
-	  m = min(n - tot, BSIZE - off%BSIZE);
-	  memmove(bp->data + off%BSIZE, src, m);
-	  log_write(bp);
-	  brelse(bp);
-	}
+    for(tot=0; tot<n; tot+=m, off+=m, src+=m){
+      bp = bread(ip->dev, bmap(ip, off/BSIZE)); //<--this
+      m = min(n - tot, BSIZE - off%BSIZE);
+      memmove(bp->data + off%BSIZE, src, m);
+      log_write(bp);
+      brelse(bp);
+    }
   }
 ```
- > - `fs.c`의 `writei`입니다. 
- > - 기존 파일 시스템에서는 `bmap`을 이용하여 파일의 `offset`에 따라 디스크 블록을 할당합니다. 
- > - `bmap`은 필요시 디스크 블록을 할당하고, 할당된 블록 주소를 반환하는 함수입니다. 
- > - 이 블록 주소를 `bread`에 넘겨 디스크 블록 정보가 담긴 `struct buf`를 얻어옵니다. 
- > - 이곳에 `src`의 내용을 기록하고 `log_write`와 `brelse`를 호출하여 쓰기 작업을 마칩니다.
+  - `fs.c`의 `writei`입니다. 
+  - 기존 파일 시스템에서는 `bmap`을 이용하여 파일의 `offset`에 따라 디스크 블록을 할당합니다. 
+  - `bmap`은 필요시 디스크 블록을 할당하고, 할당된 블록 주소를 반환하는 함수입니다. 
+  - 이 블록 주소를 `bread`에 넘겨 디스크 블록 정보가 담긴 `struct buf`를 얻어옵니다. 
+  - 이곳에 `src`의 내용을 기록하고 `log_write`와 `brelse`를 호출하여 쓰기 작업을 마칩니다.
 
  > - **CS 파일 시스템**을 구현하기 위해서 `inode`의 `type`이 `T_CS`인 경우와 아닌 경우로 흐름을 나누었습니다. 
  > - `T_CS`일 때는?
